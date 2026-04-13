@@ -3,7 +3,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 def siapkan_model_ai():
     print("Memuat dan melatih model AI Rekomendasi...")
-    # Pastikan file dataset_investasi.csv ada di luar folder app
+    # Pastikan file dataset_investasi.csv ada di tempat yang tepat
     df = pd.read_csv('dataset_investasi.csv')
     X = df[['Surplus']]
     y = df['Rekomendasi']
@@ -12,5 +12,4 @@ def siapkan_model_ai():
     print("Sistem AI siap menerima permintaan!")
     return model_ai
 
-# Menjalankan fungsi di atas saat server menyala
 model_ai = siapkan_model_ai()

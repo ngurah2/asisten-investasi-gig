@@ -4,10 +4,9 @@ import os
 import pandas as pd
 from openai import OpenAI
 from app.services.ml_model import model_ai 
-from app.database import get_db_connection # <-- TAMBAHAN BARU: Memanggil gerbang XAMPP
+from app.database import get_db_connection
 
 router = APIRouter()
-
 endpoint = "https://models.inference.ai.azure.com"
 
 @router.post("/analisis-pendapatan/")
@@ -79,22 +78,20 @@ async def analisis_pendapatan(
         prediksi = model_ai.predict(data_prediksi)
         rekomendasi = prediksi[0]
 
-    # --- TAHAP BARU: MENYIMPAN KE DATABASE XAMPP (MYSQL) ---
+    # Menyimpan ke Database XAMPP (MySQL)
     try:
         conn = get_db_connection()
         if conn:
             cursor = conn.cursor()
-            # Rumus SQL untuk memasukkan data baru ke tabel
             query = "INSERT INTO riwayat_analisis (pendapatan, kebutuhan, surplus, rekomendasi) VALUES (%s, %s, %s, %s)"
             values = (pendapatan, kebutuhan, surplus, rekomendasi)
             cursor.execute(query, values)
-            conn.commit() # Simpan permanen!
+            conn.commit() 
             cursor.close()
             conn.close()
             print("Berhasil! 1 baris data baru telah dicatat di XAMPP.")
     except Exception as db_err:
         print(f"Waduh, gagal mencatat ke database: {db_err}")
-    # -------------------------------------------------------
 
     return {
         "status": "sukses",
@@ -103,3 +100,22 @@ async def analisis_pendapatan(
         "surplus": surplus,
         "rekomendasi_investasi": rekomendasi
     }
+
+# FUNGSI WAJIB UNTUK BUKU BESAR (Jangan Dihapus)
+@router.get("/riwayat/")
+async def get_riwayat():
+    try:
+        conn = get_db_connection()
+        if conn:
+            # dictionary=True agar data keluar dalam format JSON yang rapi
+            cursor = conn.cursor(dictionary=True) 
+            cursor.execute("SELECT * FROM riwayat_analisis ORDER BY tanggal DESC")
+            hasil = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return {"status": "sukses", "data": hasil}
+    except Exception as e:
+        print(f"Gagal mengambil data: {e}")
+        return {"status": "gagal", "pesan": "Database bermasalah"}
+    
+    return {"status": "sukses", "data": []}

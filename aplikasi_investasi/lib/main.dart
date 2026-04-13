@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-// Memanggil layar ruang tamu yang baru dibuat
-import 'screens/home_screen.dart';
+import 'screens/home_screen.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -15,11 +14,10 @@ class MyApp extends StatelessWidget {
       title: 'Aplikasi GIM',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      // Langsung arahkan aplikasi buka halaman HomeScreen
-      home: const HomeScreen(),
+      home: HomeScreen(), 
     );
   }
 }
