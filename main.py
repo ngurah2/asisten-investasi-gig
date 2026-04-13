@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import analisis
+import app.database # <-- TAMBAHAN BARU: Memanggil file database agar tabel otomatis dibuat
 
 # 1. Panggil brankas .env
 load_dotenv()

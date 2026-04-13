@@ -4,8 +4,8 @@ import os
 import pandas as pd
 from openai import OpenAI
 from app.services.ml_model import model_ai 
+from app.database import get_db_connection # <-- TAMBAHAN BARU: Memanggil gerbang XAMPP
 
-# Mengganti fungsi app = FastAPI() untuk laci spesifik
 router = APIRouter()
 
 endpoint = "https://models.inference.ai.azure.com"
@@ -15,7 +15,6 @@ async def analisis_pendapatan(
     file: UploadFile = File(...), 
     kebutuhan_dinamis: int = Form(0)
 ):
-    # Mengambil token rahasia dari brankas .env
     token = os.getenv("GITHUB_TOKEN")
     client_ai = OpenAI(base_url=endpoint, api_key=token)
     
@@ -79,6 +78,23 @@ async def analisis_pendapatan(
         data_prediksi = pd.DataFrame([[surplus]], columns=['Surplus'])
         prediksi = model_ai.predict(data_prediksi)
         rekomendasi = prediksi[0]
+
+    # --- TAHAP BARU: MENYIMPAN KE DATABASE XAMPP (MYSQL) ---
+    try:
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            # Rumus SQL untuk memasukkan data baru ke tabel
+            query = "INSERT INTO riwayat_analisis (pendapatan, kebutuhan, surplus, rekomendasi) VALUES (%s, %s, %s, %s)"
+            values = (pendapatan, kebutuhan, surplus, rekomendasi)
+            cursor.execute(query, values)
+            conn.commit() # Simpan permanen!
+            cursor.close()
+            conn.close()
+            print("Berhasil! 1 baris data baru telah dicatat di XAMPP.")
+    except Exception as db_err:
+        print(f"Waduh, gagal mencatat ke database: {db_err}")
+    # -------------------------------------------------------
 
     return {
         "status": "sukses",
