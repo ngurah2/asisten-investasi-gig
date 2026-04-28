@@ -10,6 +10,7 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   late Future<List<dynamic>> _futureRiwayat;
+  String _filterAktif = 'Semua';
 
   @override
   void initState() {
@@ -22,15 +23,26 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
   }
 
+  List<dynamic> _filterData(List<dynamic> data) {
+    DateTime sekarang = DateTime.now();
+    return data.where((item) {
+      if (item['tanggal'] == null) return false;
+      DateTime tgl = DateTime.parse(item['tanggal']);
+      if (_filterAktif == 'Harian') return tgl.day == sekarang.day && tgl.month == sekarang.month && tgl.year == sekarang.year;
+      if (_filterAktif == 'Mingguan') return sekarang.difference(tgl).inDays <= 7;
+      if (_filterAktif == 'Bulanan') return tgl.month == sekarang.month && tgl.year == sekarang.year;
+      return true;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: IconThemeData(color: Colors.teal[700]), 
-        title: Text('Buku Besar GIM', style: TextStyle(color: Colors.teal[700], fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white, elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.teal),
+        title: const Text('Riwayat', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _futureRiwayat,
@@ -38,52 +50,117 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('Belum ada riwayat.'));
 
-          List<dynamic> riwayatList = snapshot.data!;
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: riwayatList.length,
-            itemBuilder: (context, index) {
-              var item = riwayatList[index];
-              int surplus = item['surplus'];
-              
-              // --- LOGIKA 3 WARNA UNTUK RIWAYAT ---
-              Color avatarBgColor;
-              Color iconColor;
-              IconData statusIcon;
+          List<dynamic> dataTersaring = _filterData(snapshot.data!);
+          int totalPendapatan = dataTersaring.fold(0, (sum, item) => sum + (item['pendapatan'] as int));
+          int totalSurplus = dataTersaring.fold(0, (sum, item) => sum + (item['surplus'] as int));
 
-              if (surplus > 0) {
-                avatarBgColor = Colors.teal.withOpacity(0.1);
-                iconColor = Colors.teal[700]!;
-                statusIcon = Icons.trending_up;
-              } else if (surplus == 0) {
-                avatarBgColor = Colors.grey.withOpacity(0.1);
-                iconColor = Colors.grey[700]!;
-                statusIcon = Icons.trending_flat; // Ikon lurus untuk 0
-              } else {
-                avatarBgColor = Colors.red.withOpacity(0.1);
-                iconColor = Colors.red;
-                statusIcon = Icons.trending_down;
-              }
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
+          return Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
-                child: Row(children: [
-                  CircleAvatar(
-                    backgroundColor: avatarBgColor, 
-                    child: Icon(statusIcon, color: iconColor)
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Rp ${formatRp(item['pendapatan'])}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    Text('Surplus: Rp ${formatRp(surplus)}', style: TextStyle(color: iconColor)),
-                    const Divider(),
-                    Text('💡 ${item['rekomendasi']}', style: TextStyle(color: iconColor, fontSize: 13)),
-                  ])),
-                ]),
-              );
-            },
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Colors.teal[700]!, Colors.teal[400]!]),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(children: [
+                      const Text('Total Pendapatan', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text('Rp ${formatRp(totalPendapatan)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ]),
+                    Container(width: 1, height: 40, color: Colors.white24),
+                    Column(children: [
+                      const Text('Total Surplus', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text('Rp ${formatRp(totalSurplus)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ]),
+                  ],
+                ),
+              ),
+
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: ['Semua', 'Harian', 'Mingguan', 'Bulanan'].map((f) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: ChoiceChip(
+                      label: Text(f), selected: _filterAktif == f,
+                      onSelected: (s) => setState(() => _filterAktif = f),
+                      selectedColor: Colors.teal,
+                      labelStyle: TextStyle(color: _filterAktif == f ? Colors.white : Colors.teal[700]),
+                    ),
+                  )).toList(),
+                ),
+              ),
+
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: dataTersaring.length,
+                  itemBuilder: (context, index) {
+                    var item = dataTersaring[index];
+                    int surplus = item['surplus'];
+                    String rincian = item['rincian'] ?? "Data lama: Tanpa rincian.";
+                    
+                    Color statusColor;
+                    String statusPesan;
+
+                    if (surplus > 0) {
+                      statusColor = Colors.teal;
+                      statusPesan = "Surplus";
+                    } else if (surplus == 0) {
+                      statusColor = Colors.grey;
+                      statusPesan = "Lebih semangat kerjanya";
+                    } else {
+                      statusColor = Colors.red;
+                      statusPesan = "Fokus nabungggg!!!!";
+                    }
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: ListTile(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              title: Text('Detail Transaksi', style: TextStyle(fontWeight: FontWeight.bold, color: statusColor)),
+                              content: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Rincian Belanja:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 8),
+                                    Text(rincian),
+                                    const SizedBox(height: 16),
+                                    const Divider(),
+                                    const Text('Saran Manajer AI & Investasi:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 8),
+                                    Text(item['rekomendasi'] ?? '-', style: const TextStyle(height: 1.5)),
+                                  ],
+                                ),
+                              ),
+                              actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text('Tutup', style: TextStyle(color: statusColor)))],
+                            ),
+                          );
+                        },
+                        leading: CircleAvatar(
+                          backgroundColor: statusColor.withOpacity(0.1),
+                          child: Icon(surplus >= 0 ? Icons.trending_up : Icons.trending_down, color: statusColor),
+                        ),
+                        title: Text('Rp ${formatRp(item['pendapatan'])}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(statusPesan, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                        trailing: Text('Rp ${formatRp(surplus)}', style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),

@@ -18,6 +18,10 @@ class _HomeScreenState extends State<HomeScreen> {
   
   final TextEditingController _deskripsiController = TextEditingController(); 
   final TextEditingController _kebutuhanController = TextEditingController(); 
+  final TextEditingController _lamaWaktuController = TextEditingController(); // BARU: Input Lama Waktu Proyek
+  
+  String _tipePendapatan = 'Harian'; 
+  final List<String> _opsiTipe = ['Harian', 'Mingguan', 'Bulanan', 'Proyek / Freelance'];
 
   bool _isLoading = false;
   Map<String, dynamic>? _hasilAnalisis;
@@ -63,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: editDeskripsi, decoration: InputDecoration(labelText: 'Deskripsi (Misal: Makan)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+              TextField(controller: editDeskripsi, decoration: InputDecoration(labelText: 'Deskripsi', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
               const SizedBox(height: 16),
               TextField(controller: editNominal, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Nominal (Rp)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
             ],
@@ -104,8 +108,15 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       List<int> imageBytes = await _imageFile!.readAsBytes();
       String fileName = _imageFile!.name; 
+      int lamaWaktu = int.tryParse(_lamaWaktuController.text) ?? 0;
       
-      var responseData = await ApiService.kirimStrukKeAI(imageBytes, fileName, _totalManual);
+      String rincianTeks = "Tipe: $_tipePendapatan\n" + 
+          (_daftarManual.isEmpty 
+          ? "Tanpa rincian pengeluaran." 
+          : _daftarManual.map((item) => "${item['deskripsi']}: Rp ${_formatRupiah(item['nominal'])}").join("\n"));
+      
+      // Kirim lengkap beserta tipe dan lama waktu
+      var responseData = await ApiService.kirimStrukKeAI(imageBytes, fileName, _totalManual, rincianTeks, _tipePendapatan, lamaWaktu);
       setState(() { _hasilAnalisis = responseData; });
     } catch (e) {
       setState(() { _hasilAnalisis = {"status": "gagal", "pesan": "Error: $e"}; });
@@ -115,15 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _tampilkanGambar() {
-    if (_imageFile == null) {
-      return const Center(child: Text('Pilih gambar struk...', style: TextStyle(color: Colors.grey)));
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: kIsWeb 
-        ? Image.network(_imageFile!.path, fit: BoxFit.contain) 
-        : Image.file(File(_imageFile!.path), fit: BoxFit.contain),
-    );
+    if (_imageFile == null) return const Center(child: Icon(Icons.receipt_long, size: 64, color: Colors.grey));
+    return ClipRRect(borderRadius: BorderRadius.circular(14), child: kIsWeb ? Image.network(_imageFile!.path, fit: BoxFit.contain) : Image.file(File(_imageFile!.path), fit: BoxFit.contain));
   }
 
   @override
@@ -131,8 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: Colors.white, elevation: 0,
         title: Text('GIM - Gig Investasi', style: TextStyle(color: Colors.teal[700], fontWeight: FontWeight.bold, fontSize: 22)),
         actions: [
           IconButton(icon: Icon(Icons.history, color: Colors.teal[700], size: 28), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatScreen()))),
@@ -144,11 +147,40 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Catat Pengeluaran Harian/Mingguan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+            const Text('Manajemen Tipe Pendapatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _tipePendapatan,
+              decoration: InputDecoration(
+                filled: true, fillColor: Colors.teal.withOpacity(0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.account_balance_wallet, color: Colors.teal),
+              ),
+              items: _opsiTipe.map((String value) => DropdownMenuItem<String>(value: value, child: Text(value))).toList(),
+              onChanged: (newValue) => setState(() => _tipePendapatan = newValue!),
+            ),
+            
+            // MUNCUL HANYA JIKA PROYEK/FREELANCE DIPILIH
+            if (_tipePendapatan == 'Proyek / Freelance') ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _lamaWaktuController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Berapa hari proyek ini berjalan?',
+                  prefixIcon: const Icon(Icons.timer, color: Colors.orange),
+                  filled: true, fillColor: Colors.orange.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
+            const Text('Catat Pengeluaran Manual', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(flex: 3, child: TextField(controller: _deskripsiController, decoration: InputDecoration(hintText: 'Misal: Bensin', filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
+                Expanded(flex: 3, child: TextField(controller: _deskripsiController, decoration: InputDecoration(hintText: 'Barang', filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
                 const SizedBox(width: 12),
                 Expanded(flex: 2, child: TextField(controller: _kebutuhanController, keyboardType: TextInputType.number, decoration: InputDecoration(hintText: 'Rp', filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
                 const SizedBox(width: 12),
@@ -165,37 +197,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item['deskripsi'], style: const TextStyle(fontSize: 15, color: Colors.black87)),
-                          const SizedBox(height: 4),
-                          Text('Rp ${_formatRupiah(item['nominal'])}', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => _editPengeluaran(index), constraints: const BoxConstraints(), padding: const EdgeInsets.symmetric(horizontal: 8)),
-                          IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => _hapusPengeluaran(index), constraints: const BoxConstraints(), padding: const EdgeInsets.symmetric(horizontal: 8)),
-                        ],
-                      ),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(item['deskripsi'], style: const TextStyle(fontSize: 15)),
+                        Text('Rp ${_formatRupiah(item['nominal'])}', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                      ]),
+                      Row(children: [
+                        IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => _editPengeluaran(index)),
+                        IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => _hapusPengeluaran(index)),
+                      ]),
                     ],
                   ),
                 );
               }),
               Divider(color: Colors.grey[300], thickness: 1),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total Pengeluaran:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87)),
-                  Text('Rp ${_formatRupiah(_totalManual)}', style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Total Pengeluaran:', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('Rp ${_formatRupiah(_totalManual)}', style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold, fontSize: 16)),
+              ]),
             ],
 
             const SizedBox(height: 32),
-            const Text('Struk Pendapatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text('Scan Struk Pendapatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             Container(
               height: 220,
@@ -203,90 +225,22 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _tampilkanGambar(),
             ),
             const SizedBox(height: 16),
-            
-            Row(
-              children: [
-                Expanded(child: ElevatedButton.icon(onPressed: () => _pilihGambar(ImageSource.camera), icon: Icon(Icons.camera_alt, color: Colors.teal[700]), label: Text('Kamera', style: TextStyle(color: Colors.teal[700])), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.withOpacity(0.1), elevation: 0, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
-                const SizedBox(width: 12),
-                Expanded(child: ElevatedButton.icon(onPressed: () => _pilihGambar(ImageSource.gallery), icon: Icon(Icons.photo_library, color: Colors.teal[700]), label: Text('Galeri', style: TextStyle(color: Colors.teal[700])), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.withOpacity(0.1), elevation: 0, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
-              ],
-            ),
+            Row(children: [
+              Expanded(child: ElevatedButton.icon(onPressed: () => _pilihGambar(ImageSource.camera), icon: const Icon(Icons.camera_alt), label: const Text('Kamera'), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.withOpacity(0.1), foregroundColor: Colors.teal[700], elevation: 0))),
+              const SizedBox(width: 12),
+              Expanded(child: ElevatedButton.icon(onPressed: () => _pilihGambar(ImageSource.gallery), icon: const Icon(Icons.photo_library), label: const Text('Galeri'), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.withOpacity(0.1), foregroundColor: Colors.teal[700], elevation: 0))),
+            ]),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _analisisStruk,
               icon: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.auto_awesome, color: Colors.white),
-              label: Text(_isLoading ? 'Menganalisis...' : 'Mulai Analisis AI', style: const TextStyle(color: Colors.white, fontSize: 16)),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[600], elevation: 0, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              label: Text(_isLoading ? 'Menganalisis...' : 'Minta Saran AI', style: const TextStyle(color: Colors.white, fontSize: 16)),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[600], padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             ),
 
             if (_hasilAnalisis != null) ...[
               const SizedBox(height: 28),
-              Builder(
-                builder: (context) {
-                  // --- LOGIKA DINAMIS WARNA DAN TEKS ---
-                  int surplus = _hasilAnalisis!['surplus'];
-                  Color themeColor;
-                  IconData statusIcon;
-                  String judulHasil;
-
-                  if (surplus > 0) {
-                    themeColor = Colors.teal;
-                    statusIcon = Icons.sentiment_very_satisfied;
-                    judulHasil = 'Selamat kamu luar biasaa';
-                  } else if (surplus == 0) {
-                    themeColor = Colors.grey;
-                    statusIcon = Icons.sentiment_neutral;
-                    judulHasil = 'Lebih semangat kerjanya';
-                  } else {
-                    themeColor = Colors.red;
-                    statusIcon = Icons.warning_amber_rounded;
-                    judulHasil = 'Wajib nabung!';
-                  }
-
-                  return Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white, 
-                      border: Border.all(color: themeColor, width: 2), 
-                      borderRadius: BorderRadius.circular(16)
-                    ),
-                    child: Column(children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center, 
-                        children: [
-                          Icon(statusIcon, color: themeColor), 
-                          const SizedBox(width: 8), 
-                          Text(judulHasil, style: TextStyle(color: themeColor, fontWeight: FontWeight.bold, fontSize: 18))
-                        ]
-                      ),
-                      const Divider(height: 32),
-                      _barisHasil('Pendapatan (AI)', 'Rp ${_formatRupiah(_hasilAnalisis!['pendapatan_terdeteksi'])}'),
-                      _barisHasil('Total Pengeluaran AI', 'Rp ${_formatRupiah(_hasilAnalisis!['kebutuhan_harian'])}'),
-                      const Divider(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween, 
-                        children: [
-                          const Text('Surplus/Sisa', style: TextStyle(color: Colors.grey)), 
-                          Text('Rp ${_formatRupiah(surplus)}', style: TextStyle(color: themeColor, fontWeight: FontWeight.bold, fontSize: 18))
-                        ]
-                      ),
-                      // Tampilkan Rekomendasi di bawah surplus
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: themeColor.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('💡 ', style: TextStyle(fontSize: 16)),
-                            Expanded(child: Text(_hasilAnalisis!['rekomendasi_investasi'], style: TextStyle(color: themeColor, fontStyle: FontStyle.italic, fontSize: 13))),
-                          ],
-                        ),
-                      )
-                    ]),
-                  );
-                }
-              ),
+              _hasilKartuAnalisis(),
             ]
           ],
         ),
@@ -294,7 +248,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _barisHasil(String label, String nilai) {
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(color: Colors.grey)), Text(nilai, style: const TextStyle(fontWeight: FontWeight.w600))]));
+  Widget _hasilKartuAnalisis() {
+    int surplus = _hasilAnalisis!['surplus'];
+    Color themeColor = surplus > 0 ? Colors.teal : (surplus == 0 ? Colors.grey : Colors.red);
+    String judul = surplus > 0 ? 'Selamat kamu luar biasaa' : (surplus == 0 ? 'Lebih semangat kerjanya' : 'Wajib nabung!');
+    IconData iconStatus = surplus > 0 ? Icons.sentiment_very_satisfied : (surplus == 0 ? Icons.sentiment_neutral : Icons.warning_amber_rounded);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: themeColor, width: 2), borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(iconStatus, color: themeColor), const SizedBox(width: 8), Text(judul, style: TextStyle(color: themeColor, fontWeight: FontWeight.bold, fontSize: 18))]),
+        const Divider(height: 32),
+        _barisHasil('Total Pendapatan', 'Rp ${_formatRupiah(_hasilAnalisis!['pendapatan_terdeteksi'])}'),
+        _barisHasil('Total Pengeluaran', 'Rp ${_formatRupiah(_hasilAnalisis!['kebutuhan_harian'])}'),
+        const Divider(height: 32),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('Surplus/Sisa Akhir', style: TextStyle(fontWeight: FontWeight.bold)), 
+          Text('Rp ${_formatRupiah(surplus)}', style: TextStyle(color: themeColor, fontWeight: FontWeight.bold, fontSize: 18))
+        ]),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: themeColor.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [Icon(Icons.smart_toy, color: themeColor, size: 20), const SizedBox(width: 8), Text('Saran Manajer AI', style: TextStyle(fontWeight: FontWeight.bold, color: themeColor))]),
+              const SizedBox(height: 8),
+              Text(_hasilAnalisis!['rekomendasi_investasi'], style: const TextStyle(height: 1.5)),
+            ],
+          ),
+        )
+      ]),
+    );
+  }
+
+  Widget _barisHasil(String l, String n) {
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.grey)), Text(n, style: const TextStyle(fontWeight: FontWeight.bold))]));
   }
 }
