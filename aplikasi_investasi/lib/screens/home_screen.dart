@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
-import 'riwayat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,7 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   
   final TextEditingController _deskripsiController = TextEditingController(); 
   final TextEditingController _kebutuhanController = TextEditingController(); 
-  final TextEditingController _lamaWaktuController = TextEditingController(); // BARU: Input Lama Waktu Proyek
+  final TextEditingController _lamaWaktuController = TextEditingController(); 
   
   String _tipePendapatan = 'Harian'; 
   final List<String> _opsiTipe = ['Harian', 'Mingguan', 'Bulanan', 'Proyek / Freelance'];
@@ -103,20 +102,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _analisisStruk() async {
     if (_imageFile == null) return;
+
+    // LOGIKA VALIDASI CERDAS (Sesuai permintaan Bli Kresna)
+    String lamaWaktuStr = "";
+    if (_tipePendapatan == 'Proyek / Freelance') {
+      lamaWaktuStr = _lamaWaktuController.text.trim().toLowerCase();
+      
+      // Jika kosong sama sekali
+      if (lamaWaktuStr.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lama waktu proyek wajib diisi!'), backgroundColor: Colors.red));
+        return;
+      }
+      
+      // Jika hanya mengetik angka tanpa keterangan waktu
+      if (!lamaWaktuStr.contains('hari') && !lamaWaktuStr.contains('minggu') && !lamaWaktuStr.contains('bulan') && !lamaWaktuStr.contains('tahun')) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Kurang lengkap! Tambahkan satuan waktu (contoh: 42 hari, 3 bulan).'), 
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ));
+        return;
+      }
+    }
+
     setState(() { _isLoading = true; _hasilAnalisis = null; });
 
     try {
       List<int> imageBytes = await _imageFile!.readAsBytes();
       String fileName = _imageFile!.name; 
-      int lamaWaktu = int.tryParse(_lamaWaktuController.text) ?? 0;
       
       String rincianTeks = "Tipe: $_tipePendapatan\n" + 
           (_daftarManual.isEmpty 
           ? "Tanpa rincian pengeluaran." 
           : _daftarManual.map((item) => "${item['deskripsi']}: Rp ${_formatRupiah(item['nominal'])}").join("\n"));
       
-      // Kirim lengkap beserta tipe dan lama waktu
-      var responseData = await ApiService.kirimStrukKeAI(imageBytes, fileName, _totalManual, rincianTeks, _tipePendapatan, lamaWaktu);
+      // Kirim data utuh ke Backend
+      var responseData = await ApiService.kirimStrukKeAI(imageBytes, fileName, _totalManual, rincianTeks, _tipePendapatan, lamaWaktuStr);
       setState(() { _hasilAnalisis = responseData; });
     } catch (e) {
       setState(() { _hasilAnalisis = {"status": "gagal", "pesan": "Error: $e"}; });
@@ -137,10 +158,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white, elevation: 0,
         title: Text('GIM - Gig Investasi', style: TextStyle(color: Colors.teal[700], fontWeight: FontWeight.bold, fontSize: 22)),
-        actions: [
-          IconButton(icon: Icon(Icons.history, color: Colors.teal[700], size: 28), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RiwayatScreen()))),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
@@ -160,14 +177,13 @@ class _HomeScreenState extends State<HomeScreen> {
               onChanged: (newValue) => setState(() => _tipePendapatan = newValue!),
             ),
             
-            // MUNCUL HANYA JIKA PROYEK/FREELANCE DIPILIH
             if (_tipePendapatan == 'Proyek / Freelance') ...[
               const SizedBox(height: 12),
               TextField(
                 controller: _lamaWaktuController,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.text, // BERUBAH: Agar keyboard huruf muncul
                 decoration: InputDecoration(
-                  hintText: 'Berapa hari proyek ini berjalan?',
+                  hintText: 'Misal: 42 hari, atau 3 bulan',
                   prefixIcon: const Icon(Icons.timer, color: Colors.orange),
                   filled: true, fillColor: Colors.orange.withOpacity(0.05),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)

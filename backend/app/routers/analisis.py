@@ -15,7 +15,7 @@ async def analisis_pendapatan(
     kebutuhan_dinamis: int = Form(0),
     rincian: str = Form(""),
     tipe_pendapatan: str = Form("Harian"), 
-    lama_waktu: int = Form(0) 
+    lama_waktu: str = Form("") # BERUBAH: Sekarang menerima teks utuh (contoh: "42 hari", "3 bulan")
 ):
     token = os.getenv("GITHUB_TOKEN")
     client_ai = OpenAI(base_url=endpoint, api_key=token)
@@ -23,7 +23,7 @@ async def analisis_pendapatan(
     pendapatan = 0
 
     try:
-        # 1. PROSES BACA GAMBAR
+        # 1. BACA GAMBAR STRUK
         image_bytes = await file.read()
         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
         mime_type = file.content_type or "image/jpeg"
@@ -44,45 +44,41 @@ async def analisis_pendapatan(
 
     surplus = pendapatan - kebutuhan_dinamis
 
-    # 2. AI SEBAGAI MANAJER KEUANGAN (ANALISIS RINCIAN & SISA UANG)
+    # 2. AI SEBAGAI MANAJER KEUANGAN 
     try:
-        prompt_budget = f"""
-        Saya baru mendapat penghasilan tipe '{tipe_pendapatan}' sebesar Rp {pendapatan}.
-        """
-        if tipe_pendapatan == "Proyek / Freelance" and lama_waktu > 0:
-            prompt_budget += f"Uang ini harus dikelola untuk bertahan hidup selama {lama_waktu} hari ke depan.\n"
+        prompt_budget = f"Saya baru mendapat penghasilan dengan tipe '{tipe_pendapatan}' sebesar Rp {pendapatan}."
         
-        prompt_budget += f"""
-        Berikut adalah daftar pengeluaran riil yang BARU SAJA saya keluarkan hari ini:
-        {rincian}
-        Total pengeluaran: Rp {kebutuhan_dinamis}.
-        Sisa uang saat ini (Surplus): Rp {surplus}.
-
-        Tugas Anda sebagai Manajer Keuangan AI:
-        1. Evaluasi Pengeluaran Riil: Kelompokkan pengeluaran di atas (contoh: Makan/Bensin -> Kebutuhan Pokok Operasional, Ban Bocor/Sakit -> Darurat/Mendesak, Pinjaman Teman -> Sosial/Lainnya). Beri sedikit apresiasi/teguran apakah pengeluaran ini sudah bijak.
-        2. Rencana SISA UANG: Berikan saran alokasi (dalam nominal) HANYA untuk sisa uang (Rp {surplus}) dengan aturan Progressive Budgeting (jika pendapatan <5jt pakai 50/30/20, jika belasan/puluhan juta perkecil % pokok dan besarkan % investasi).
+        # LOGIKA CERDAS: Menerapkan teks waktu secara presisi
+        if tipe_pendapatan == "Proyek / Freelance" and lama_waktu != "":
+            prompt_budget += f" Uang ini harus dikelola agar cukup untuk memenuhi kebutuhan hidup selama {lama_waktu} ke depan."
         
-        Jawab dengan format poin-poin bernomor yang sangat singkat, padat, dan langsung ke intinya. Maksimal 5 baris poin.
+        prompt_budget += """ 
+        Berikan saran manajemen keuangan singkat (pembagian % dan nominal Rupiah) untuk:
+        1. Kebutuhan Pokok
+        2. Kebutuhan Sekunder/Hiburan
+        3. Tabungan/Investasi
+        
+        Sesuaikan persentasenya dengan logika yang sehat berdasarkan nominal dan durasi bertahan hidup (jika ada). Jika pendapatan besar, perkecil proporsi Kebutuhan Pokok dan besarkan Investasi (Progressive Budgeting).
+        Jawab dengan format poin-poin singkat tanpa basa-basi (maksimal 4 baris).
         """
 
         response_budget = client_ai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt_budget}],
-            max_tokens=250
+            max_tokens=200
         )
         saran_budget = response_budget.choices[0].message.content.strip()
     except Exception:
-        saran_budget = "Gagal memuat saran manajemen keuangan dari AI."
+        saran_budget = "Gunakan metode 50/30/20 untuk Pokok, Sekunder, dan Investasi."
 
-    # 3. ML MODEL: REKOMENDASI INVESTASI LOKAL (Berdasarkan Sisa Uang)
+    # 3. ML MODEL: REKOMENDASI INVESTASI (Berdasarkan SISA Uang)
     if surplus <= 0:
-        rekomendasi_ml = "Tidak ada sisa dana untuk investasi. Prioritaskan kestabilan kas darurat."
+        rekomendasi_ml = "Tidak ada sisa dana. Fokus penuhi kebutuhan pokok dan siapkan dana darurat."
     else:
         data_prediksi = pd.DataFrame([[surplus]], columns=['Surplus'])
         rekomendasi_ml = model_ai.predict(data_prediksi)[0]
 
-    # GABUNGAN HASIL ANALISIS
-    rekomendasi_final = f"📊 Analisis & Alokasi AI:\n{saran_budget}\n\n🎯 Saran Instrumen (Sisa Kas): {rekomendasi_ml}"
+    rekomendasi_final = f"📊 Rencana Alokasi AI:\n{saran_budget}\n\n🎯 Saran Instrumen (Sisa Kas): {rekomendasi_ml}"
 
     # 4. SIMPAN KE DATABASE
     try:

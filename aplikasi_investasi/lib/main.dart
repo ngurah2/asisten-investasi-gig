@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart'; 
+import 'screens/main_screen.dart'; // Pastikan import MainScreen
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: HomeScreen(), 
+      home: const MainScreen(), // <-- UBAH BAGIAN INI JADI MainScreen()
     );
   }
 }

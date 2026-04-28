@@ -11,6 +11,12 @@ class RiwayatScreen extends StatefulWidget {
 class _RiwayatScreenState extends State<RiwayatScreen> {
   late Future<List<dynamic>> _futureRiwayat;
   String _filterAktif = 'Semua';
+  DateTime _bulanDipilih = DateTime.now(); // BARU
+
+  final List<String> _namaBulan = [
+    '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
 
   @override
   void initState() {
@@ -19,8 +25,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   }
 
   String formatRp(int angka) {
-    return angka.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+    return angka.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
   }
 
   List<dynamic> _filterData(List<dynamic> data) {
@@ -30,9 +35,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       DateTime tgl = DateTime.parse(item['tanggal']);
       if (_filterAktif == 'Harian') return tgl.day == sekarang.day && tgl.month == sekarang.month && tgl.year == sekarang.year;
       if (_filterAktif == 'Mingguan') return sekarang.difference(tgl).inDays <= 7;
-      if (_filterAktif == 'Bulanan') return tgl.month == sekarang.month && tgl.year == sekarang.year;
+      if (_filterAktif == 'Bulanan') return tgl.month == _bulanDipilih.month && tgl.year == _bulanDipilih.year;
       return true;
     }).toList();
+  }
+
+  void _ubahBulan(int nilai) {
+    setState(() {
+      _bulanDipilih = DateTime(_bulanDipilih.year, _bulanDipilih.month + nilai, 1);
+    });
   }
 
   @override
@@ -41,8 +52,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.white, elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.teal),
-        title: const Text('Riwayat', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
+        title: const Text('Riwayat Keuangan', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold)),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: _futureRiwayat,
@@ -59,10 +69,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
               Container(
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [Colors.teal[700]!, Colors.teal[400]!]),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.teal[700]!, Colors.teal[400]!]), borderRadius: BorderRadius.circular(16)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -85,18 +92,29 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                 child: Row(
                   children: ['Semua', 'Harian', 'Mingguan', 'Bulanan'].map((f) => Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: ChoiceChip(
-                      label: Text(f), selected: _filterAktif == f,
-                      onSelected: (s) => setState(() => _filterAktif = f),
-                      selectedColor: Colors.teal,
-                      labelStyle: TextStyle(color: _filterAktif == f ? Colors.white : Colors.teal[700]),
-                    ),
+                    child: ChoiceChip(label: Text(f), selected: _filterAktif == f, onSelected: (s) => setState(() => _filterAktif = f), selectedColor: Colors.teal, labelStyle: TextStyle(color: _filterAktif == f ? Colors.white : Colors.teal[700])),
                   )).toList(),
                 ),
               ),
 
+              // WIDGET BARU: PEMILIH BULAN
+              if (_filterAktif == 'Bulanan')
+                Container(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(icon: const Icon(Icons.chevron_left, color: Colors.teal), onPressed: () => _ubahBulan(-1)),
+                      Text('${_namaBulan[_bulanDipilih.month]} ${_bulanDipilih.year}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      IconButton(icon: const Icon(Icons.chevron_right, color: Colors.teal), onPressed: () => _ubahBulan(1)),
+                    ],
+                  ),
+                ),
+
               Expanded(
-                child: ListView.builder(
+                child: dataTersaring.isEmpty 
+                ? Center(child: Text('Tidak ada riwayat di ${_namaBulan[_bulanDipilih.month]} ${_bulanDipilih.year}.', style: const TextStyle(color: Colors.grey)))
+                : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: dataTersaring.length,
                   itemBuilder: (context, index) {
@@ -104,19 +122,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     int surplus = item['surplus'];
                     String rincian = item['rincian'] ?? "Data lama: Tanpa rincian.";
                     
-                    Color statusColor;
-                    String statusPesan;
-
-                    if (surplus > 0) {
-                      statusColor = Colors.teal;
-                      statusPesan = "Surplus";
-                    } else if (surplus == 0) {
-                      statusColor = Colors.grey;
-                      statusPesan = "Lebih semangat kerjanya";
-                    } else {
-                      statusColor = Colors.red;
-                      statusPesan = "Fokus nabungggg!!!!";
-                    }
+                    Color statusColor = surplus > 0 ? Colors.teal : (surplus == 0 ? Colors.grey : Colors.red);
+                    String statusPesan = surplus > 0 ? "Surplus" : (surplus == 0 ? "Lebih semangat kerjanya" : "Fokus nabungggg!!!!");
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -130,17 +137,12 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                               title: Text('Detail Transaksi', style: TextStyle(fontWeight: FontWeight.bold, color: statusColor)),
                               content: SingleChildScrollView(
                                 child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text('Rincian Belanja:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 8),
-                                    Text(rincian),
-                                    const SizedBox(height: 16),
-                                    const Divider(),
+                                    const SizedBox(height: 8), Text(rincian), const SizedBox(height: 16), const Divider(),
                                     const Text('Saran Manajer AI & Investasi:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 8),
-                                    Text(item['rekomendasi'] ?? '-', style: const TextStyle(height: 1.5)),
+                                    const SizedBox(height: 8), Text(item['rekomendasi'] ?? '-', style: const TextStyle(height: 1.5)),
                                   ],
                                 ),
                               ),
@@ -148,10 +150,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             ),
                           );
                         },
-                        leading: CircleAvatar(
-                          backgroundColor: statusColor.withOpacity(0.1),
-                          child: Icon(surplus >= 0 ? Icons.trending_up : Icons.trending_down, color: statusColor),
-                        ),
+                        leading: CircleAvatar(backgroundColor: statusColor.withOpacity(0.1), child: Icon(surplus >= 0 ? Icons.trending_up : Icons.trending_down, color: statusColor)),
                         title: Text('Rp ${formatRp(item['pendapatan'])}', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(statusPesan, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
                         trailing: Text('Rp ${formatRp(surplus)}', style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
