@@ -1,54 +1,45 @@
 # GIM - Gig Investasi Management 🚀
 
-**GIM (Gig Investasi Management)** adalah aplikasi asisten keuangan pribadi cerdas yang dirancang khusus untuk pekerja modern, mulai dari *gig worker* (seperti driver ojol), karyawan bulanan, hingga *freelancer* berbasis proyek. 
+Sebuah proyek aplikasi cerdas berbasis **Flutter** yang dirancang khusus sebagai *Personal Financial Advisor* untuk pekerja modern, mulai dari *gig worker* (driver ojol/kurir), karyawan bulanan, hingga *freelancer* berbasis proyek.
 
-Dibangun dengan **Flutter** dan didukung oleh kecerdasan buatan (**OpenAI GPT-4o-mini**), aplikasi ini tidak sekadar mencatat pengeluaran, tetapi bertindak sebagai *Personal Financial Advisor* yang mampu menganalisis struk, mengklasifikasikan pengeluaran, dan memberikan rekomendasi investasi yang sehat berdasarkan prinsip *Progressive Budgeting*.
+Aplikasi ini tidak sekadar mencatat pengeluaran, tetapi memanfaatkan **AI (OpenAI GPT-4o-mini)** untuk menganalisis struk, mengklasifikasikan pengeluaran riil, dan memberikan saran alokasi dana menggunakan logika *Progressive Budgeting*.
 
 ---
 
-## ✨ Fitur Utama (V2 Update - April 2026)
+## ✨ Fitur Utama (Versi 2.0 Stable)
 
 ### 🤖 1. AI-Powered Financial Advisor
-- **OCR Smart Scan:** Memindai dan mengekstrak total pendapatan secara otomatis dari struk kertas maupun laporan digital (PDF/Screenshot) menggunakan teknologi OpenAI Vision.
-- **Progressive Budgeting Logic:** AI tidak lagi menggunakan rasio kaku (seperti 50/30/20). Saran alokasi dana (Pokok, Sekunder, Investasi) dihitung secara dinamis berdasarkan nominal pendapatan, durasi waktu proyek, dan pengeluaran riil pengguna.
-- **Surplus Analysis:** Analisis manajemen keuangan difokuskan pada "Sisa Uang" murni setelah pengeluaran wajib dipenuhi.
+- **OCR Smart Scan:** Ekstraksi total pendapatan otomatis dari struk kertas atau laporan digital (PDF/Screenshot).
+- **Progressive Budgeting Logic:** AI memberikan saran alokasi dana secara dinamis berdasarkan nominal pendapatan dan "Sisa Uang" murni, bukan rasio statis.
+- **Smart Validation:** AI mampu menganalisis konteks waktu secara spesifik untuk pendapatan berbasis proyek (validasi input hari/minggu/bulan/tahun).
 
-### 💼 2. Fleksibilitas Tipe Pendapatan
-Mendukung berbagai model pemasukan pengguna:
-- **Harian & Mingguan:** Cocok untuk evaluasi kas cepat.
-- **Bulanan:** Untuk manajemen gaji rutin.
-- **Proyek / Freelance:** Dilengkapi parameter **Lama Waktu Proyek** (dengan validasi input presisi) agar AI dapat menghitung rasio bertahan hidup selama masa pengerjaan proyek.
+### 💼 2. Fleksibilitas Manajemen
+- Dukungan model pemasukan: **Harian, Mingguan, Bulanan,** dan **Proyek / Freelance**.
+- Buku besar dinamis dengan filter rentang waktu cerdas.
 
-### 📊 3. Dashboard Analytics & Buku Besar
-- **Bottom Navigation Bar:** Antarmuka ergonomis untuk navigasi cepat antar halaman (Beranda, Dashboard, Riwayat).
-- **Interactive Charts:** Menggunakan `fl_chart` untuk memvisualisasikan Proporsi Keuangan (Pie Chart) dan Tren 7 Transaksi Terakhir (Bar Chart).
-- **Time-Range Filtering & Month Picker:** Filter data riwayat dan grafik secara *real-time* berdasarkan periode (Harian, Mingguan, Bulanan) lengkap dengan fitur pemilih bulan spesifik.
+### 📊 3. UI/UX & Keamanan Terintegrasi
+- **Secure Authentication:** Sistem Login dan Registrasi akun pengguna yang terenkripsi (SHA-256) dan terhubung ke database MySQL.
+- **Ergonomic Dashboard:** Visualisasi data interaktif menggunakan `fl_chart` (Pie Chart & Bar Chart) lengkap dengan fitur pemilih bulan (*Month Picker*).
+- **Bottom Navigation & Profile:** Navigasi bawah yang ramah jempol (Beranda, Dashboard, Riwayat, Profil) dengan manajemen sesi (*Session Management*) menggunakan `shared_preferences`.
 
 ---
 
 ## 🛠️ Stack Teknologi
-
 - **Frontend:** Flutter (Dart)
 - **Backend:** FastAPI (Python)
-- **Database:** MySQL (via XAMPP)
-- **AI / Machine Learning:** - OpenAI API (GPT-4o-mini) untuk OCR dan Analisis Anggaran.
-  - Scikit-Learn (Decision Tree Classifier) untuk rekomendasi instrumen investasi lokal (RDPU, RDPT, Saham).
-- **Charting:** `fl_chart`
+- **Database:** MySQL
+- **AI/ML:** OpenAI API & Scikit-Learn
 
 ---
 
-## 🚀 Memulai Proyek (Getting Started)
+## 🚀 Getting Started
 
-Proyek ini merupakan titik awal untuk aplikasi Flutter berbasis AI. 
+Proyek ini adalah titik awal untuk aplikasi Flutter Anda. Pastikan untuk mengimpor file `query.txt` ke dalam database SQL Anda sebelum menjalankan backend.
 
-### Prasyarat
-- Flutter SDK terinstal.
-- Server XAMPP berjalan (Apache & MySQL).
-- Backend FastAPI aktif di `localhost:8000`.
+- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
+- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
 
-### Cara Menjalankan Aplikasi
-1. *Clone repository* ini.
-2. Buka terminal pada direktori proyek.
-3. Jalankan perintah untuk mengunduh dependensi:
-   ```bash
-   flutter pub get
+Untuk bantuan lebih lanjut, kunjungi [online documentation](https://docs.flutter.dev/).
+
+---
+*Developed with ☕️ in Mengwi, Bali.*
