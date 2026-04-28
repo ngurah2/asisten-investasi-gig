@@ -101,26 +101,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _analisisStruk() async {
-    if (_imageFile == null) return;
+    if (_imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Silakan pilih gambar struk terlebih dahulu!')));
+      return;
+    }
 
-    // LOGIKA VALIDASI CERDAS (Sesuai permintaan Bli Kresna)
     String lamaWaktuStr = "";
     if (_tipePendapatan == 'Proyek / Freelance') {
       lamaWaktuStr = _lamaWaktuController.text.trim().toLowerCase();
-      
-      // Jika kosong sama sekali
       if (lamaWaktuStr.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lama waktu proyek wajib diisi!'), backgroundColor: Colors.red));
         return;
       }
-      
-      // Jika hanya mengetik angka tanpa keterangan waktu
       if (!lamaWaktuStr.contains('hari') && !lamaWaktuStr.contains('minggu') && !lamaWaktuStr.contains('bulan') && !lamaWaktuStr.contains('tahun')) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Kurang lengkap! Tambahkan satuan waktu (contoh: 42 hari, 3 bulan).'), 
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kurang lengkap! Tambahkan satuan waktu (contoh: 42 hari).'), backgroundColor: Colors.red));
         return;
       }
     }
@@ -130,13 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       List<int> imageBytes = await _imageFile!.readAsBytes();
       String fileName = _imageFile!.name; 
-      
       String rincianTeks = "Tipe: $_tipePendapatan\n" + 
-          (_daftarManual.isEmpty 
-          ? "Tanpa rincian pengeluaran." 
-          : _daftarManual.map((item) => "${item['deskripsi']}: Rp ${_formatRupiah(item['nominal'])}").join("\n"));
+          (_daftarManual.isEmpty ? "Tanpa rincian pengeluaran." : _daftarManual.map((item) => "${item['deskripsi']}: Rp ${_formatRupiah(item['nominal'])}").join("\n"));
       
-      // Kirim data utuh ke Backend
       var responseData = await ApiService.kirimStrukKeAI(imageBytes, fileName, _totalManual, rincianTeks, _tipePendapatan, lamaWaktuStr);
       setState(() { _hasilAnalisis = responseData; });
     } catch (e) {
@@ -156,7 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white, elevation: 0,
+        backgroundColor: Colors.white, 
+        elevation: 0,
         title: Text('GIM - Gig Investasi', style: TextStyle(color: Colors.teal[700], fontWeight: FontWeight.bold, fontSize: 22)),
       ),
       body: SingleChildScrollView(
@@ -181,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _lamaWaktuController,
-                keyboardType: TextInputType.text, // BERUBAH: Agar keyboard huruf muncul
                 decoration: InputDecoration(
                   hintText: 'Misal: 42 hari, atau 3 bulan',
                   prefixIcon: const Icon(Icons.timer, color: Colors.orange),
@@ -292,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(children: [Icon(Icons.smart_toy, color: themeColor, size: 20), const SizedBox(width: 8), Text('Saran Manajer AI', style: TextStyle(fontWeight: FontWeight.bold, color: themeColor))]),
               const SizedBox(height: 8),
-              Text(_hasilAnalisis!['rekomendasi_investasi'], style: const TextStyle(height: 1.5)),
+              Text(_hasilAnalisis!['rekomendasi_investasi'] ?? '', style: const TextStyle(height: 1.5)),
             ],
           ),
         )
