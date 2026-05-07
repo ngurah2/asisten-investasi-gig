@@ -1,0 +1,8 @@
+# Menyembunyikan File Rahasia
+.env
+
+# Menyembunyikan Cache Python
+__pycache__/
+*.pyc
+
+# (Jika Flutter Anda ada di folder yang sama, biasanya sudah ada bawaan gitignore dari Flutternya)
