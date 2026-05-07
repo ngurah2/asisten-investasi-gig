@@ -16,42 +16,48 @@ def hash_password(password: str):
 
 # --- ENDPOINT LOGIN & REGISTER ---
 @router.post("/register/")
-async def register(nama: str = Form(...), email: str = Form(...), password: str = Form(...)):
+async def register(
+    nama: str = Form(...), 
+    username: str = Form(...), # TAMBAHAN: Kolom Username
+    email: str = Form(...), 
+    password: str = Form(...)
+):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         hashed_pw = hash_password(password)
-        cursor.execute("INSERT INTO users (nama, email, password) VALUES (%s, %s, %s)", (nama, email, hashed_pw))
+        # Query diupdate untuk memasukkan username
+        cursor.execute("INSERT INTO users (nama, username, email, password) VALUES (%s, %s, %s, %s)", (nama, username, email, hashed_pw))
         conn.commit()
         cursor.close()
         conn.close()
         return {"status": "sukses", "pesan": "Registrasi berhasil!"}
     except Exception as e:
-        return {"status": "gagal", "pesan": "Email sudah terdaftar atau terjadi kesalahan."}
+        return {"status": "gagal", "pesan": "Username/Email sudah terdaftar atau terjadi kesalahan."}
 
 @router.post("/login/")
-async def login(email: str = Form(...), password: str = Form(...)):
+async def login(username: str = Form(...), password: str = Form(...)): # UPDATE: Menggunakan username
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         hashed_pw = hash_password(password)
-        cursor.execute("SELECT id, nama, email FROM users WHERE email=%s AND password=%s", (email, hashed_pw))
+        # Query mencari data berdasarkan username, bukan email
+        cursor.execute("SELECT id, nama, username, email FROM users WHERE username=%s AND password=%s", (username, hashed_pw))
         user = cursor.fetchone()
         cursor.close()
         conn.close()
 
         if user:
-            # TAMBAHAN: Kini backend mengembalikan 'id' user ke Flutter
-            return {"status": "sukses", "data": {"id": user["id"], "nama": user["nama"], "email": user["email"]}}
+            return {"status": "sukses", "data": {"id": user["id"], "nama": user["nama"], "username": user["username"], "email": user["email"]}}
         else:
-            return {"status": "gagal", "pesan": "Email atau password salah."}
+            return {"status": "gagal", "pesan": "Username atau password salah."}
     except Exception as e:
         return {"status": "gagal", "pesan": "Database error."}
 
 # --- ENDPOINT ANALISIS ---
 @router.post("/analisis-pendapatan/")
 async def analisis_pendapatan(
-    user_id: int = Form(...), # TAMBAHAN: Menerima ID User
+    user_id: int = Form(...), 
     file: UploadFile = File(...), 
     kebutuhan_dinamis: int = Form(0),
     rincian: str = Form(""),
@@ -111,7 +117,6 @@ async def analisis_pendapatan(
         conn = get_db_connection()
         if conn:
             cursor = conn.cursor()
-            # TAMBAHAN: Memasukkan user_id ke database
             query = "INSERT INTO riwayat_analisis (user_id, pendapatan, kebutuhan, rincian, surplus, rekomendasi) VALUES (%s, %s, %s, %s, %s, %s)"
             values = (user_id, pendapatan, kebutuhan_dinamis, rincian, surplus, rekomendasi_final)
             cursor.execute(query, values)
@@ -126,12 +131,11 @@ async def analisis_pendapatan(
     }
 
 @router.get("/riwayat/")
-async def get_riwayat(user_id: int): # TAMBAHAN: Menerima query user_id
+async def get_riwayat(user_id: int): 
     try:
         conn = get_db_connection()
         if conn:
             cursor = conn.cursor(dictionary=True) 
-            # TAMBAHAN: Menarik riwayat khusus untuk user yang sedang login saja
             cursor.execute("SELECT * FROM riwayat_analisis WHERE user_id=%s ORDER BY tanggal DESC", (user_id,))
             hasil = cursor.fetchall()
             cursor.close()

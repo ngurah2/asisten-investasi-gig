@@ -4,12 +4,13 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const String baseUrl = "http://127.0.0.1:8000";
 
-  // --- FUNGSI LOGIN & REGISTER BARU ---
-  static Future<Map<String, dynamic>> loginUser(String email, String password) async {
+  // --- FUNGSI LOGIN & REGISTER BARU (UPDATE FITUR C: USERNAME) ---
+  static Future<Map<String, dynamic>> loginUser(String username, String password) async {
     try {
       var response = await http.post(
         Uri.parse('$baseUrl/login/'),
-        body: {"email": email, "password": password},
+        // Menggunakan 'username' alih-alih 'email'
+        body: {"username": username, "password": password},
       );
       return json.decode(response.body);
     } catch (e) {
@@ -17,11 +18,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> registerUser(String nama, String email, String password) async {
+  static Future<Map<String, dynamic>> registerUser(String nama, String username, String email, String password) async {
     try {
       var response = await http.post(
         Uri.parse('$baseUrl/register/'),
-        body: {"nama": nama, "email": email, "password": password},
+        // Menambahkan pengiriman data 'username' ke backend
+        body: {"nama": nama, "username": username, "email": email, "password": password},
       );
       return json.decode(response.body);
     } catch (e) {

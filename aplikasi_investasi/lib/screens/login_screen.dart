@@ -14,42 +14,60 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isLoginMode = true;
   bool isLoading = false;
   
-  // Variabel baru untuk Fitur Mata Password
-  bool _isObscure = true;
+  bool _isObscurePassword = true;
+  bool _isObscureConfirm = true;
 
   final TextEditingController _namaController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   Future<void> _submitAuth() async {
-    String email = _emailController.text.trim();
+    String username = _usernameController.text.trim();
     String password = _passwordController.text.trim();
-    String nama = _namaController.text.trim();
+    
+    // Mode Login
+    if (isLoginMode) {
+      if (username.isEmpty || password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Harap isi Username dan Password!'), backgroundColor: Colors.red));
+        return;
+      }
+    } 
+    // Mode Register
+    else {
+      String nama = _namaController.text.trim();
+      String email = _emailController.text.trim();
+      String confirmPassword = _confirmPasswordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || (!isLoginMode && nama.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Harap isi semua kolom!'), backgroundColor: Colors.red));
-      return;
+      if (nama.isEmpty || username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Harap isi semua kolom pendaftaran!'), backgroundColor: Colors.red));
+        return;
+      }
+      if (password != confirmPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Konfirmasi password tidak cocok!'), backgroundColor: Colors.red));
+        return;
+      }
     }
 
     setState(() => isLoading = true);
 
     Map<String, dynamic> response;
     if (isLoginMode) {
-      response = await ApiService.loginUser(email, password);
+      response = await ApiService.loginUser(username, password);
     } else {
-      response = await ApiService.registerUser(nama, email, password);
+      String nama = _namaController.text.trim();
+      String email = _emailController.text.trim();
+      response = await ApiService.registerUser(nama, username, email, password);
     }
 
     setState(() => isLoading = false);
 
     if (response['status'] == 'sukses') {
       if (isLoginMode) {
-        // Simpan sesi login
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('userName', response['data']['nama']);
-        
-        // TAMBAHAN: Menyimpan ID User ke memori HP
         await prefs.setInt('userId', response['data']['id']);
         
         if (mounted) {
@@ -57,7 +75,11 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registrasi Berhasil! Silakan Login.'), backgroundColor: Colors.teal));
-        setState(() => isLoginMode = true);
+        setState(() {
+          isLoginMode = true;
+          _passwordController.clear();
+          _confirmPasswordController.clear();
+        });
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['pesan']), backgroundColor: Colors.red));
@@ -85,39 +107,52 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(isLoginMode ? 'Masuk untuk kelola investasimu' : 'Daftar untuk jadikan AI manajer keuanganmu', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
                 const SizedBox(height: 32),
                 
+                // Form khusus Registrasi
                 if (!isLoginMode) ...[
                   TextField(controller: _namaController, decoration: InputDecoration(labelText: 'Nama Lengkap', prefixIcon: const Icon(Icons.person), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
                   const SizedBox(height: 16),
+                  TextField(controller: _emailController, decoration: InputDecoration(labelText: 'Email', prefixIcon: const Icon(Icons.email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                  const SizedBox(height: 16),
                 ],
                 
-                TextField(controller: _emailController, decoration: InputDecoration(labelText: 'Email', prefixIcon: const Icon(Icons.email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                // Username digunakan di kedua mode
+                TextField(controller: _usernameController, decoration: InputDecoration(labelText: 'Username', prefixIcon: const Icon(Icons.alternate_email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
                 const SizedBox(height: 16),
                 
-                // --- UPDATE FITUR A: MATA PASSWORD ---
+                // Password digunakan di kedua mode
                 TextField(
                   controller: _passwordController, 
-                  obscureText: _isObscure, 
+                  obscureText: _isObscurePassword, 
                   decoration: InputDecoration(
                     labelText: 'Password', 
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        _isObscure ? Icons.visibility_off : Icons.visibility,
-                        color: Colors.teal,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isObscure = !_isObscure;
-                        });
-                      },
+                      icon: Icon(_isObscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.teal),
+                      onPressed: () => setState(() => _isObscurePassword = !_isObscurePassword),
                     ),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
                   )
                 ),
-                // --- AKHIR UPDATE FITUR A ---
+                
+                // Konfirmasi Password khusus Registrasi
+                if (!isLoginMode) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _confirmPasswordController, 
+                    obscureText: _isObscureConfirm, 
+                    decoration: InputDecoration(
+                      labelText: 'Konfirmasi Password', 
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(_isObscureConfirm ? Icons.visibility_off : Icons.visibility, color: Colors.teal),
+                        onPressed: () => setState(() => _isObscureConfirm = !_isObscureConfirm),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+                    )
+                  ),
+                ],
                 
                 const SizedBox(height: 32),
-                
                 ElevatedButton(
                   onPressed: isLoading ? null : _submitAuth,
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.teal[700], padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
@@ -125,7 +160,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => setState(() => isLoginMode = !isLoginMode),
+                  onPressed: () => setState(() {
+                    isLoginMode = !isLoginMode;
+                    _passwordController.clear();
+                    _confirmPasswordController.clear();
+                  }),
                   child: Text(isLoginMode ? 'Belum punya akun? Daftar sekarang' : 'Sudah punya akun? Masuk di sini', style: TextStyle(color: Colors.teal[600])),
                 )
               ],
