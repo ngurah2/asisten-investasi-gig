@@ -13,6 +13,9 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool isLoginMode = true;
   bool isLoading = false;
+  
+  // Variabel baru untuk Fitur Mata Password
+  bool _isObscure = true;
 
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -89,7 +92,30 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 TextField(controller: _emailController, decoration: InputDecoration(labelText: 'Email', prefixIcon: const Icon(Icons.email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
                 const SizedBox(height: 16),
-                TextField(controller: _passwordController, obscureText: true, decoration: InputDecoration(labelText: 'Password', prefixIcon: const Icon(Icons.lock), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                
+                // --- UPDATE FITUR A: MATA PASSWORD ---
+                TextField(
+                  controller: _passwordController, 
+                  obscureText: _isObscure, 
+                  decoration: InputDecoration(
+                    labelText: 'Password', 
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isObscure ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.teal,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isObscure = !_isObscure;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+                  )
+                ),
+                // --- AKHIR UPDATE FITUR A ---
+                
                 const SizedBox(height: 32),
                 
                 ElevatedButton(
