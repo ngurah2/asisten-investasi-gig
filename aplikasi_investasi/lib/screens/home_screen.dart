@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,6 +29,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _hasilAnalisis;
   List<Map<String, dynamic>> _daftarManual = [];
 
+  final PageController _pageController = PageController(viewportFraction: 0.93, initialPage: 1000);
+  int _currentCardIndex = 1000;
+  Timer? _carouselTimer;
+
   int get _totalManual => _daftarManual.fold(0, (sum, item) => sum + (item['nominal'] as int));
 
   String _formatRupiah(int angka) {
@@ -34,6 +40,31 @@ class _HomeScreenState extends State<HomeScreen> {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), 
       (Match m) => '${m[1]}.'
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _mulaiPutaranOtomatis();
+  }
+
+  void _mulaiPutaranOtomatis() {
+    _carouselTimer?.cancel(); 
+    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (Timer timer) {
+      if (_pageController.hasClients) {
+        _pageController.nextPage(duration: const Duration(milliseconds: 600), curve: Curves.easeOutCirc);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _pageController.dispose();
+    _deskripsiController.dispose();
+    _kebutuhanController.dispose();
+    _lamaWaktuController.dispose();
+    super.dispose();
   }
 
   void _tambahPengeluaran() {
@@ -151,6 +182,223 @@ class _HomeScreenState extends State<HomeScreen> {
     return ClipRRect(borderRadius: BorderRadius.circular(14), child: kIsWeb ? Image.network(_imageFile!.path, fit: BoxFit.contain) : Image.file(File(_imageFile!.path), fit: BoxFit.contain));
   }
 
+  // LOGIKA AKSI KETIKA KARTU DIKLIK
+  void _tampilkanDetailKartu(int index) {
+    if (index == 0) {
+      // KARTU 1: BOTTOM SHEET IHSG
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.trending_up, color: Colors.teal[800], size: 32),
+                  const SizedBox(width: 12),
+                  Text('Detail IHSG (Data Dummy)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.teal[800])),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text('Indeks Harga Saham Gabungan (IHSG) hari ini menunjukkan tren positif di angka 7,234.50, naik sebesar 0.45%.', style: TextStyle(fontSize: 16)),
+              const SizedBox(height: 12),
+              const Text('Nantinya, data ini akan ditarik secara real-time dari API pasar modal melalui backend FastAPI Anda.', style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 24),
+              SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal), child: const Text('Tutup', style: TextStyle(color: Colors.white)))),
+            ],
+          ),
+        ),
+      );
+    } else if (index == 1) {
+      // KARTU 2: BOTTOM SHEET TIPS KEUANGAN
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.lightbulb_outline, color: Colors.orange[800], size: 32),
+                  const SizedBox(width: 12),
+                  Text('Tips Alokasi Gig Worker', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange[800])),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text('Gunakan metode 50/30/20 untuk mengelola penghasilan tidak tetapmu:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('• 50% untuk Kebutuhan Pokok (makan, kos, bensin).\n• 30% untuk Keinginan (hiburan, nongkrong).\n• 20% untuk Tabungan & Investasi (darurat, masa depan).', style: TextStyle(fontSize: 15, height: 1.5)),
+              const SizedBox(height: 24),
+              SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[800]), child: const Text('Mengerti', style: TextStyle(color: Colors.white)))),
+            ],
+          ),
+        ),
+      );
+    } else if (index == 2) {
+      // KARTU 3: DIALOG FITUR AI
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [Icon(Icons.document_scanner, color: Colors.teal[600]), const SizedBox(width: 8), const Text('Fitur Scan OCR')]),
+          content: const Text('Scroll ke bagian bawah halaman ini untuk menemukan fitur "Scan Struk Pendapatan". \n\nFoto struk atau catatan belanjamu, dan AI akan menganalisis sisa uangmu secara otomatis!'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Siap, Bli!', style: TextStyle(color: Colors.teal[700]))),
+          ],
+        ),
+      );
+    } else if (index == 3) {
+      // KARTU 4: DIALOG MENUJU FITUR E (TARGET KEUANGAN)
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [Icon(Icons.rocket_launch, color: Colors.blueGrey[700]), const SizedBox(width: 8), const Text('Target Keuangan')]),
+          content: const Text('Fitur "Target Keuangan (Goals)" akan segera kita bangun!\n\nDi sini nanti Bli bisa mencatat impian seperti beli laptop atau liburan, dan GIM akan membantu menghitung strategi tabungannya.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Tutup', style: TextStyle(color: Colors.blueGrey[700]))),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildCarousel() {
+    final List<Map<String, dynamic>> carouselData = [
+      {
+        "title": "IHSG Real-Time",
+        "content": "7,234.50",
+        "subtitle": "+0.45% Hari ini (Klik untuk info)",
+        "color": Colors.teal[800],
+        "icon": Icons.trending_up,
+      },
+      {
+        "title": "Tips Gig Worker",
+        "content": "Alokasikan Dana",
+        "subtitle": "Metode 50/30/20 untuk pekerja lepas. (Klik untuk baca)",
+        "color": Colors.orange[800],
+        "icon": Icons.lightbulb_outline,
+      },
+      {
+        "title": "Fitur AI GIM",
+        "content": "Scan OCR Pintar",
+        "subtitle": "Kamera pintar untuk kelola keuangan. (Klik petunjuk)",
+        "color": Colors.teal[600],
+        "icon": Icons.document_scanner,
+      },
+      {
+        "title": "Target Keuangan",
+        "content": "Terus Berjuang!",
+        "subtitle": "Pantau progres tabungan impianmu. (Segera Hadir)",
+        "color": Colors.blueGrey[700],
+        "icon": Icons.track_changes,
+      }
+    ];
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              dragDevices: {PointerDeviceKind.touch, PointerDeviceKind.mouse},
+            ),
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() => _currentCardIndex = index);
+                _mulaiPutaranOtomatis();
+              },
+              itemBuilder: (context, index) {
+                final realIndex = index % carouselData.length;
+                final data = carouselData[realIndex];
+                
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      // MEMANGGIL FUNGSI DETAIL SAAT DIKLIK
+                      onTap: () => _tampilkanDetailKartu(realIndex),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: data['color'],
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(color: (data['color'] as Color).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 5))
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(data['title'], style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  const SizedBox(height: 8),
+                                  Text(data['content'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                                  const SizedBox(height: 8),
+                                  Text(data['subtitle'], style: const TextStyle(color: Colors.white, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                            Icon(data['icon'], size: 64, color: Colors.white.withOpacity(0.3)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            carouselData.length,
+            (index) {
+              int currentPageMod = _currentCardIndex % carouselData.length;
+              bool isActive = currentPageMod == index;
+              
+              return GestureDetector(
+                onTap: () {
+                  int offset = index - currentPageMod;
+                  int targetPage = _currentCardIndex + offset;
+                  _pageController.animateToPage(
+                    targetPage, 
+                    duration: const Duration(milliseconds: 500), 
+                    curve: Curves.easeInOut
+                  );
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 12, 
+                  width: isActive ? 24 : 12,
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.teal : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,6 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _buildCarousel(),
+            const SizedBox(height: 32),
+
             const Text('Manajemen Tipe Pendapatan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
