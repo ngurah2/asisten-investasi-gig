@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // TAMBAHAN
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -123,7 +123,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() { _isLoading = true; _hasilAnalisis = null; });
 
     try {
-      // TAMBAHAN: Tarik userID dari memori sebelum memanggil API
       SharedPreferences prefs = await SharedPreferences.getInstance();
       int userId = prefs.getInt('userId') ?? 0;
 
@@ -138,7 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
       String rincianTeks = "Tipe: $_tipePendapatan\n" + 
           (_daftarManual.isEmpty ? "Tanpa rincian pengeluaran." : _daftarManual.map((item) => "${item['deskripsi']}: Rp ${_formatRupiah(item['nominal'])}").join("\n"));
       
-      // TAMBAHAN: Masukkan userId ke dalam fungsi API
       var responseData = await ApiService.kirimStrukKeAI(userId, imageBytes, fileName, _totalManual, rincianTeks, _tipePendapatan, lamaWaktuStr);
       setState(() { _hasilAnalisis = responseData; });
     } catch (e) {
@@ -258,7 +256,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (_hasilAnalisis != null) ...[
               const SizedBox(height: 28),
-              _hasilKartuAnalisis(),
+              if (_hasilAnalisis!['status'] == 'sukses')
+                _hasilKartuAnalisis()
+              else
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.red)),
+                  child: Text(_hasilAnalisis!['pesan'] ?? 'Terjadi kesalahan saat memproses data.', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                )
             ]
           ],
         ),
@@ -267,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _hasilKartuAnalisis() {
-    int surplus = _hasilAnalisis!['surplus'];
+    int surplus = int.tryParse(_hasilAnalisis!['surplus']?.toString() ?? '0') ?? 0;
     Color themeColor = surplus > 0 ? Colors.teal : (surplus == 0 ? Colors.grey : Colors.red);
     String judul = surplus > 0 ? 'Selamat kamu luar biasaa' : (surplus == 0 ? 'Lebih semangat kerjanya' : 'Wajib nabung!');
     IconData iconStatus = surplus > 0 ? Icons.sentiment_very_satisfied : (surplus == 0 ? Icons.sentiment_neutral : Icons.warning_amber_rounded);
@@ -278,8 +283,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(iconStatus, color: themeColor), const SizedBox(width: 8), Text(judul, style: TextStyle(color: themeColor, fontWeight: FontWeight.bold, fontSize: 18))]),
         const Divider(height: 32),
-        _barisHasil('Total Pendapatan', 'Rp ${_formatRupiah(_hasilAnalisis!['pendapatan_terdeteksi'])}'),
-        _barisHasil('Total Pengeluaran', 'Rp ${_formatRupiah(_hasilAnalisis!['kebutuhan_harian'])}'),
+        _barisHasil('Total Pendapatan', 'Rp ${_formatRupiah(int.tryParse(_hasilAnalisis!['pendapatan_terdeteksi']?.toString() ?? '0') ?? 0)}'),
+        _barisHasil('Total Pengeluaran', 'Rp ${_formatRupiah(int.tryParse(_hasilAnalisis!['kebutuhan_harian']?.toString() ?? '0') ?? 0)}'),
         const Divider(height: 32),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           const Text('Surplus/Sisa Akhir', style: TextStyle(fontWeight: FontWeight.bold)), 

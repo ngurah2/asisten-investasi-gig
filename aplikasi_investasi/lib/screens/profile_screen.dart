@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart'; // MENGIMPOR HALAMAN LOGIN SECARA LANGSUNG
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _prosesLogout() async {
-    // Konfirmasi sebelum keluar
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -41,9 +41,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () async {
               SharedPreferences prefs = await SharedPreferences.getInstance();
-              await prefs.clear(); // Hapus sesi login
+              await prefs.clear(); // Hapus sesi login murni
+
               if (mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                // UPDATE: Paksa navigasi langsung ke LoginScreen, hancurkan semua rute lain
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
               }
             },
             child: const Text('Keluar', style: TextStyle(color: Colors.white)),
@@ -66,7 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // KARTU HEADER PROFIL
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(bottom: 30, top: 20),
@@ -95,7 +100,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             
             const SizedBox(height: 20),
 
-            // MENU PROFIL
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -115,7 +119,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   
                   const SizedBox(height: 30),
                   
-                  // TOMBOL LOGOUT
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(

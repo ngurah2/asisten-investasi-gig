@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // TAMBAHAN
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -23,10 +23,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _futureRiwayat = _loadData(); // TAMBAHAN: Memanggil load data
+    _futureRiwayat = _loadData();
   }
 
-  // TAMBAHAN: Fungsi untuk mengambil user_id lalu fetch API
   Future<List<dynamic>> _loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int userId = prefs.getInt('userId') ?? 0;
@@ -71,9 +70,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           List<dynamic> dataTersaring = _filterData(snapshot.data!);
           
-          int totalPendapatan = dataTersaring.fold(0, (sum, item) => sum + (item['pendapatan'] as int));
-          int totalKebutuhan = dataTersaring.fold(0, (sum, item) => sum + (item['kebutuhan'] as int));
-          int totalSurplus = dataTersaring.fold(0, (sum, item) => sum + (item['surplus'] as int));
+          int totalPendapatan = dataTersaring.fold(0, (sum, item) => sum + (int.tryParse(item['pendapatan']?.toString() ?? '0') ?? 0));
+          int totalKebutuhan = dataTersaring.fold(0, (sum, item) => sum + (int.tryParse(item['kebutuhan']?.toString() ?? '0') ?? 0));
+          int totalSurplus = dataTersaring.fold(0, (sum, item) => sum + (int.tryParse(item['surplus']?.toString() ?? '0') ?? 0));
           List<dynamic> recentData = dataTersaring.take(7).toList().reversed.toList();
 
           return Column(
@@ -141,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: BarChart(
                           BarChartData(
                             alignment: BarChartAlignment.spaceAround,
-                            maxY: recentData.isEmpty ? 100 : recentData.map((e) => e['pendapatan'] as int).reduce((a, b) => a > b ? a : b).toDouble() * 1.2,
+                            maxY: recentData.isEmpty ? 100 : recentData.map((e) => int.tryParse(e['pendapatan']?.toString() ?? '0') ?? 0).reduce((a, b) => a > b ? a : b).toDouble() * 1.2,
                             barTouchData: BarTouchData(enabled: false),
                             titlesData: FlTitlesData(
                               show: true,
@@ -154,7 +153,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             gridData: FlGridData(show: false), borderData: FlBorderData(show: false),
                             barGroups: recentData.asMap().entries.map((entry) {
-                              int index = entry.key; int pendapatan = entry.value['pendapatan']; int surplus = entry.value['surplus'];
+                              int index = entry.key; 
+                              int pendapatan = int.tryParse(entry.value['pendapatan']?.toString() ?? '0') ?? 0; 
+                              int surplus = int.tryParse(entry.value['surplus']?.toString() ?? '0') ?? 0;
                               return BarChartGroupData(x: index, barRods: [
                                 BarChartRodData(toY: pendapatan.toDouble(), color: Colors.teal[200], width: 12, borderRadius: BorderRadius.circular(4)),
                                 BarChartRodData(toY: surplus > 0 ? surplus.toDouble() : 0, color: Colors.teal[700], width: 12, borderRadius: BorderRadius.circular(4)),

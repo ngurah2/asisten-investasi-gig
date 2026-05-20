@@ -18,11 +18,12 @@ def buat_tabel():
     if conn:
         cursor = conn.cursor()
         
-        # 1. Buat tabel users terlebih dahulu
+        # 1. Buat tabel users terlebih dahulu (Kolom username ditambahkan)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 nama VARCHAR(100),
+                username VARCHAR(50) UNIQUE,
                 email VARCHAR(100) UNIQUE,
                 password VARCHAR(255)
             )

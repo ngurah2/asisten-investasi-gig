@@ -23,6 +23,33 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
+  // Variabel untuk menyimpan riwayat username (FITUR B)
+  List<String> _riwayatUsernames = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRiwayatUsernames();
+  }
+
+  // Memuat riwayat username dari memori HP (FITUR B)
+  Future<void> _loadRiwayatUsernames() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _riwayatUsernames = prefs.getStringList('riwayat_usernames') ?? [];
+    });
+  }
+
+  // Menyimpan username ke riwayat setelah berhasil login (FITUR B)
+  Future<void> _simpanRiwayatUsername(String username) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> list = prefs.getStringList('riwayat_usernames') ?? [];
+    if (!list.contains(username)) {
+      list.add(username);
+      await prefs.setStringList('riwayat_usernames', list);
+    }
+  }
+
   Future<void> _submitAuth() async {
     String username = _usernameController.text.trim();
     String password = _passwordController.text.trim();
@@ -70,6 +97,9 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('userName', response['data']['nama']);
         await prefs.setInt('userId', response['data']['id']);
         
+        // Simpan username ke daftar pop-up riwayat (FITUR B)
+        await _simpanRiwayatUsername(username);
+        
         if (mounted) {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
         }
@@ -115,11 +145,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                 ],
                 
-                // Username digunakan di kedua mode
-                TextField(controller: _usernameController, decoration: InputDecoration(labelText: 'Username', prefixIcon: const Icon(Icons.alternate_email), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                // Username dengan Fitur B (Autocomplete Pop-Up)
+                Autocomplete<String>(
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    // Tampilkan semua riwayat jika kolom kosong
+                    if (textEditingValue.text.isEmpty) {
+                      return _riwayatUsernames;
+                    }
+                    // Filter berdasarkan ketikan pengguna
+                    return _riwayatUsernames.where((String option) {
+                      return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                    });
+                  },
+                  onSelected: (String selection) {
+                    _usernameController.text = selection;
+                  },
+                  fieldViewBuilder: (BuildContext context, TextEditingController fieldController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
+                    // Sinkronisasi inputan pengguna yang diketik secara manual (bukan dari pilihan)
+                    fieldController.addListener(() {
+                      _usernameController.text = fieldController.text;
+                    });
+                    
+                    return TextField(
+                      controller: fieldController,
+                      focusNode: fieldFocusNode,
+                      decoration: InputDecoration(
+                        labelText: 'Username', 
+                        prefixIcon: const Icon(Icons.alternate_email), 
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        suffixIcon: _riwayatUsernames.isNotEmpty ? const Icon(Icons.arrow_drop_down, color: Colors.grey) : null,
+                      )
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
                 
-                // Password digunakan di kedua mode
+                // Password digunakan di kedua mode (Fitur A: Ikon Mata)
                 TextField(
                   controller: _passwordController, 
                   obscureText: _isObscurePassword, 

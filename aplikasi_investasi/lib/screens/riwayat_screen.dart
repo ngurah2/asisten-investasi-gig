@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // TAMBAHAN
+import 'package:shared_preferences/shared_preferences.dart'; 
 import '../services/api_service.dart';
 
 class RiwayatScreen extends StatefulWidget {
@@ -22,10 +22,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
   @override
   void initState() {
     super.initState();
-    _futureRiwayat = _loadData(); // TAMBAHAN: Memanggil load data
+    _futureRiwayat = _loadData();
   }
 
-  // TAMBAHAN: Fungsi untuk mengambil user_id lalu fetch API
   Future<List<dynamic>> _loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int userId = prefs.getInt('userId') ?? 0;
@@ -69,8 +68,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('Belum ada riwayat.'));
 
           List<dynamic> dataTersaring = _filterData(snapshot.data!);
-          int totalPendapatan = dataTersaring.fold(0, (sum, item) => sum + (item['pendapatan'] as int));
-          int totalSurplus = dataTersaring.fold(0, (sum, item) => sum + (item['surplus'] as int));
+          int totalPendapatan = dataTersaring.fold(0, (sum, item) => sum + (int.tryParse(item['pendapatan']?.toString() ?? '0') ?? 0));
+          int totalSurplus = dataTersaring.fold(0, (sum, item) => sum + (int.tryParse(item['surplus']?.toString() ?? '0') ?? 0));
 
           return Column(
             children: [
@@ -126,7 +125,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   itemCount: dataTersaring.length,
                   itemBuilder: (context, index) {
                     var item = dataTersaring[index];
-                    int surplus = item['surplus'];
+                    int surplus = int.tryParse(item['surplus']?.toString() ?? '0') ?? 0;
+                    int pendapatan = int.tryParse(item['pendapatan']?.toString() ?? '0') ?? 0;
                     String rincian = item['rincian'] ?? "Data lama: Tanpa rincian.";
                     
                     Color statusColor = surplus > 0 ? Colors.teal : (surplus == 0 ? Colors.grey : Colors.red);
@@ -158,7 +158,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           );
                         },
                         leading: CircleAvatar(backgroundColor: statusColor.withOpacity(0.1), child: Icon(surplus >= 0 ? Icons.trending_up : Icons.trending_down, color: statusColor)),
-                        title: Text('Rp ${formatRp(item['pendapatan'])}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text('Rp ${formatRp(pendapatan)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(statusPesan, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold)),
                         trailing: Text('Rp ${formatRp(surplus)}', style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
                       ),
