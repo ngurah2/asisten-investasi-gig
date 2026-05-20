@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import 'goals_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  XFile? _imageFile; 
+  XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
   
   final TextEditingController _deskripsiController = TextEditingController(); 
@@ -28,12 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   Map<String, dynamic>? _hasilAnalisis;
   List<Map<String, dynamic>> _daftarManual = [];
+  Map<String, dynamic>? _targetTerdekat;
 
   final PageController _pageController = PageController(viewportFraction: 0.93, initialPage: 1000);
   int _currentCardIndex = 1000;
   Timer? _carouselTimer;
 
-  // Variabel penampung data IHSG Real-time
   String _ihsgNilai = "Memuat...";
   String _ihsgPerubahan = "Memuat data...";
 
@@ -51,21 +52,29 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _mulaiPutaranOtomatis();
     _loadIHSG();
+    _loadTargetTerdekat();
   }
 
   Future<void> _loadIHSG() async {
     final response = await ApiService.fetchIHSG();
-    if (response['status'] == 'sukses') {
+    if (mounted) {
       setState(() {
-        _ihsgNilai = response['nilai'];
-        _ihsgPerubahan = '${response['perubahan']} Hari ini (Real-Time)';
-      });
-    } else {
-      setState(() {
-        _ihsgNilai = "Gagal memuat";
-        _ihsgPerubahan = "Cek koneksi server";
+        if (response['status'] == 'sukses') {
+          _ihsgNilai = response['nilai'];
+          _ihsgPerubahan = '${response['perubahan']} Hari ini (Real-Time)';
+        } else {
+          _ihsgNilai = "Gagal memuat";
+          _ihsgPerubahan = "Cek koneksi server";
+        }
       });
     }
+  }
+
+  Future<void> _loadTargetTerdekat() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int userId = prefs.getInt('userId') ?? 0;
+    var data = await ApiService.fetchTargetTerdekat(userId);
+    if (mounted) setState(() => _targetTerdekat = data);
   }
 
   void _mulaiPutaranOtomatis() {
@@ -270,17 +279,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else if (index == 3) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(children: [Icon(Icons.rocket_launch, color: Colors.blueGrey[700]), const SizedBox(width: 8), const Text('Target Keuangan')]),
-          content: const Text('Fitur "Target Keuangan (Goals)" akan segera kita bangun!\n\nDi sini nanti Anda bisa mencatat impian seperti beli laptop atau liburan, dan GIM akan membantu menghitung strategi tabungannya.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Tutup', style: TextStyle(color: Colors.blueGrey[700]))),
-          ],
-        ),
-      );
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const GoalsScreen()))
+          .then((_) => _loadTargetTerdekat());
     }
   }
 
@@ -309,8 +309,8 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       {
         "title": "Target Keuangan",
-        "content": "Terus Berjuang!",
-        "subtitle": "Pantau progres tabungan impianmu. (Segera Hadir)",
+        "content": _targetTerdekat != null ? "Rp ${_formatRupiah(_targetTerdekat!['terkumpul'] ?? 0)}" : "Belum ada target",
+        "subtitle": _targetTerdekat != null ? "${_targetTerdekat!['nama_target']} (Deadline: ${_targetTerdekat!['deadline']})" : "Klik untuk mulai buat impianmu!",
         "color": Colors.blueGrey[700],
         "icon": Icons.track_changes,
       }

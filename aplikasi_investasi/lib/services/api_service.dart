@@ -4,12 +4,11 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static const String baseUrl = "http://127.0.0.1:8000";
 
-  // --- FUNGSI LOGIN & REGISTER BARU (UPDATE FITUR C: USERNAME) ---
+  // --- FUNGSI LOGIN & REGISTER ---
   static Future<Map<String, dynamic>> loginUser(String username, String password) async {
     try {
       var response = await http.post(
         Uri.parse('$baseUrl/login/'),
-        // Menggunakan 'username' alih-alih 'email'
         body: {"username": username, "password": password},
       );
       return json.decode(response.body);
@@ -22,7 +21,6 @@ class ApiService {
     try {
       var response = await http.post(
         Uri.parse('$baseUrl/register/'),
-        // Menambahkan pengiriman data 'username' ke backend
         body: {"nama": nama, "username": username, "email": email, "password": password},
       );
       return json.decode(response.body);
@@ -31,7 +29,7 @@ class ApiService {
     }
   }
 
-  // --- FUNGSI ANALISIS & RIWAYAT (DIPERBARUI DENGAN USER ID) ---
+  // --- FUNGSI ANALISIS & RIWAYAT ---
   static Future<Map<String, dynamic>> kirimStrukKeAI(
       int userId, List<int> imageBytes, String fileName, int kebutuhanDinamis, String rincian, String tipePendapatan, String lamaWaktu) async {
     try {
@@ -39,7 +37,6 @@ class ApiService {
       var request = http.MultipartRequest('POST', uri);
       request.files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: fileName));
       
-      // TAMBAHAN: Mengirim user_id
       request.fields['user_id'] = userId.toString();
       request.fields['kebutuhan_dinamis'] = kebutuhanDinamis.toString();
       request.fields['rincian'] = rincian;
@@ -57,7 +54,6 @@ class ApiService {
 
   static Future<List<dynamic>> ambilRiwayat(int userId) async {
     try {
-      // TAMBAHAN: Memanggil API dengan query user_id
       var response = await http.get(Uri.parse('$baseUrl/riwayat/?user_id=$userId'));
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
@@ -69,7 +65,7 @@ class ApiService {
     }
   }
 
-  // --- FUNGSI BARU: MENGAMBIL DATA IHSG REAL-TIME ---
+  // --- FUNGSI IHSG REAL-TIME ---
   static Future<Map<String, dynamic>> fetchIHSG() async {
     try {
       var response = await http.get(Uri.parse('$baseUrl/ihsg/'));
@@ -80,6 +76,48 @@ class ApiService {
       }
     } catch (e) {
       return {"status": "gagal", "pesan": "Gagal terhubung ke backend: $e"};
+    }
+  }
+
+  // --- FUNGSI TARGET KEUANGAN ---
+  static Future<Map<String, dynamic>> tambahTarget(int userId, String nama, int nominal, String deadline) async {
+    try {
+      var response = await http.post(
+        Uri.parse('$baseUrl/target/tambah/'),
+        body: {"user_id": userId.toString(), "nama": nama, "nominal": nominal.toString(), "deadline": deadline},
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      return {"status": "gagal", "pesan": "Gagal terhubung ke server."};
+    }
+  }
+
+  static Future<List<dynamic>> listTarget(int userId) async {
+    try {
+      var response = await http.get(Uri.parse('$baseUrl/target/list/?user_id=$userId'));
+      if (response.statusCode == 200) {
+        var data = json.decode(response.body);
+        if (data['status'] == 'sukses') return data['data'];
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // --- FUNGSI BARU UNTUK RINGKASAN DI HOME SCREEN ---
+  static Future<Map<String, dynamic>?> fetchTargetTerdekat(int userId) async {
+    try {
+      var response = await http.get(Uri.parse('$baseUrl/target/list/?user_id=$userId'));
+      if (response.statusCode == 200) {
+        var data = json.decode(response.body)['data'] as List;
+        if (data.isNotEmpty) {
+          return data.first; // Mengambil target pertama untuk ditampilkan
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 }

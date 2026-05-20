@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'login_screen.dart'; // MENGIMPOR HALAMAN LOGIN SECARA LANGSUNG
+import 'login_screen.dart'; 
+import 'goals_screen.dart'; 
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,10 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
             onPressed: () async {
               SharedPreferences prefs = await SharedPreferences.getInstance();
-              await prefs.clear(); // Hapus sesi login murni
-
+              await prefs.clear();
               if (mounted) {
-                // UPDATE: Paksa navigasi langsung ke LoginScreen, hancurkan semua rute lain
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -105,9 +104,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Fitur Mendatang (V3)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text('Manajemen Target & Laporan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 10),
-                  _buildMenuItem(icon: Icons.track_changes, title: 'Target Finansial (Goals)', subtitle: 'Lacak tabungan impianmu', isComingSoon: true),
+                  
+                  _buildMenuItem(
+                    icon: Icons.track_changes, 
+                    title: 'Target Finansial (Goals)', 
+                    subtitle: 'Lacak tabungan impianmu', 
+                    isComingSoon: false,
+                    onTap: () {
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (context) => const GoalsScreen())
+                      );
+                    }
+                  ),
+                  
                   _buildMenuItem(icon: Icons.picture_as_pdf, title: 'Ekspor Laporan PDF', subtitle: 'Unduh rekap bulanan', isComingSoon: true),
                   
                   const SizedBox(height: 20),
@@ -143,7 +155,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuItem({required IconData icon, required String title, required String subtitle, bool isComingSoon = false}) {
+  Widget _buildMenuItem({
+    required IconData icon, 
+    required String title, 
+    required String subtitle, 
+    bool isComingSoon = false,
+    VoidCallback? onTap
+  }) {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
@@ -158,8 +176,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
         trailing: isComingSoon 
             ? const Icon(Icons.lock_clock, color: Colors.orange) 
-            : const Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: () {
+            : const Icon(Icons.chevron_right, color: Colors.teal),
+        onTap: onTap ?? () {
           if (isComingSoon) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur ini akan hadir di GIM V3!')));
           }
