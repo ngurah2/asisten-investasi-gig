@@ -33,6 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentCardIndex = 1000;
   Timer? _carouselTimer;
 
+  // Variabel penampung data IHSG Real-time
+  String _ihsgNilai = "Memuat...";
+  String _ihsgPerubahan = "Memuat data...";
+
   int get _totalManual => _daftarManual.fold(0, (sum, item) => sum + (item['nominal'] as int));
 
   String _formatRupiah(int angka) {
@@ -46,6 +50,22 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _mulaiPutaranOtomatis();
+    _loadIHSG();
+  }
+
+  Future<void> _loadIHSG() async {
+    final response = await ApiService.fetchIHSG();
+    if (response['status'] == 'sukses') {
+      setState(() {
+        _ihsgNilai = response['nilai'];
+        _ihsgPerubahan = '${response['perubahan']} Hari ini (Real-Time)';
+      });
+    } else {
+      setState(() {
+        _ihsgNilai = "Gagal memuat";
+        _ihsgPerubahan = "Cek koneksi server";
+      });
+    }
   }
 
   void _mulaiPutaranOtomatis() {
@@ -182,10 +202,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return ClipRRect(borderRadius: BorderRadius.circular(14), child: kIsWeb ? Image.network(_imageFile!.path, fit: BoxFit.contain) : Image.file(File(_imageFile!.path), fit: BoxFit.contain));
   }
 
-  // LOGIKA AKSI KETIKA KARTU DIKLIK
   void _tampilkanDetailKartu(int index) {
     if (index == 0) {
-      // KARTU 1: BOTTOM SHEET IHSG
       showModalBottomSheet(
         context: context,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -199,13 +217,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(Icons.trending_up, color: Colors.teal[800], size: 32),
                   const SizedBox(width: 12),
-                  Text('Detail IHSG (Data Dummy)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.teal[800])),
+                  Text('Detail IHSG', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.teal[800])),
                 ],
               ),
               const SizedBox(height: 16),
-              const Text('Indeks Harga Saham Gabungan (IHSG) hari ini menunjukkan tren positif di angka 7,234.50, naik sebesar 0.45%.', style: TextStyle(fontSize: 16)),
+              Text('Indeks Harga Saham Gabungan (IHSG) hari ini berada di angka $_ihsgNilai, bergerak sebesar ${_ihsgPerubahan.split(' ')[0]}.', style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 12),
-              const Text('Nantinya, data ini akan ditarik secara real-time dari API pasar modal melalui backend FastAPI Anda.', style: TextStyle(color: Colors.grey)),
+              const Text('Data ini ditarik secara real-time dari API pasar modal melalui backend FastAPI Anda.', style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 24),
               SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: Colors.teal), child: const Text('Tutup', style: TextStyle(color: Colors.white)))),
             ],
@@ -213,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else if (index == 1) {
-      // KARTU 2: BOTTOM SHEET TIPS KEUANGAN
       showModalBottomSheet(
         context: context,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -241,7 +258,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else if (index == 2) {
-      // KARTU 3: DIALOG FITUR AI
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -249,18 +265,17 @@ class _HomeScreenState extends State<HomeScreen> {
           title: Row(children: [Icon(Icons.document_scanner, color: Colors.teal[600]), const SizedBox(width: 8), const Text('Fitur Scan OCR')]),
           content: const Text('Scroll ke bagian bawah halaman ini untuk menemukan fitur "Scan Struk Pendapatan". \n\nFoto struk atau catatan belanjamu, dan AI akan menganalisis sisa uangmu secara otomatis!'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Siap, Bli!', style: TextStyle(color: Colors.teal[700]))),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Siap!', style: TextStyle(color: Colors.teal[700]))),
           ],
         ),
       );
     } else if (index == 3) {
-      // KARTU 4: DIALOG MENUJU FITUR E (TARGET KEUANGAN)
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(children: [Icon(Icons.rocket_launch, color: Colors.blueGrey[700]), const SizedBox(width: 8), const Text('Target Keuangan')]),
-          content: const Text('Fitur "Target Keuangan (Goals)" akan segera kita bangun!\n\nDi sini nanti Bli bisa mencatat impian seperti beli laptop atau liburan, dan GIM akan membantu menghitung strategi tabungannya.'),
+          content: const Text('Fitur "Target Keuangan (Goals)" akan segera kita bangun!\n\nDi sini nanti Anda bisa mencatat impian seperti beli laptop atau liburan, dan GIM akan membantu menghitung strategi tabungannya.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text('Tutup', style: TextStyle(color: Colors.blueGrey[700]))),
           ],
@@ -273,8 +288,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Map<String, dynamic>> carouselData = [
       {
         "title": "IHSG Real-Time",
-        "content": "7,234.50",
-        "subtitle": "+0.45% Hari ini (Klik untuk info)",
+        "content": _ihsgNilai, 
+        "subtitle": _ihsgPerubahan, 
         "color": Colors.teal[800],
         "icon": Icons.trending_up,
       },
@@ -324,7 +339,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      // MEMANGGIL FUNGSI DETAIL SAAT DIKLIK
                       onTap: () => _tampilkanDetailKartu(realIndex),
                       borderRadius: BorderRadius.circular(20),
                       child: Container(

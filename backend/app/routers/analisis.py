@@ -1,9 +1,11 @@
-from fastapi import APIRouter, UploadFile, File, Form, Query
+from fastapi import APIRouter, UploadFile, File, Form, Query, HTTPException
 import base64
 import os
 import hashlib 
 import pandas as pd
 from openai import OpenAI
+import yfinance as yf # TAMBAHAN: Import library yfinance
+
 from app.services.ml_model import model_ai 
 from app.database import get_db_connection
 
@@ -144,3 +146,38 @@ async def get_riwayat(user_id: int):
     except Exception as e:
         return {"status": "gagal", "pesan": "Database bermasalah"}
     return {"status": "sukses", "data": []}
+
+# --- ENDPOINT IHSG REAL-TIME ---
+@router.get("/ihsg/")
+async def get_ihsg_data():
+    try:
+        # Mengambil ticker IHSG (^JKSE) dari Yahoo Finance
+        ticker = yf.Ticker("^JKSE")
+        
+        # Mengambil data perdagangan 1 hari terakhir
+        data = ticker.history(period="1d")
+        
+        if data.empty:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+            
+        # Mengambil harga penutupan terakhir (Latest Close)
+        latest_close = data['Close'].iloc[-1]
+        
+        # Mengambil harga pembukaan (Open) untuk menghitung persentase perubahan
+        open_price = data['Open'].iloc[-1]
+        change_nominal = latest_close - open_price
+        change_percent = (change_nominal / open_price) * 100
+        
+        # Tentukan tanda + atau - untuk persentase
+        sign = "+" if change_percent >= 0 else ""
+        
+        return {
+            "status": "sukses",
+            "nilai": f"{latest_close:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            "perubahan": f"{sign}{change_percent:.2f}%"
+        }
+    except Exception as e:
+        return {
+            "status": "gagal",
+            "pesan": f"Gagal memuat data IHSG: {str(e)}"
+        }

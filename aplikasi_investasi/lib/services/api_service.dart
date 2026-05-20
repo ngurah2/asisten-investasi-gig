@@ -68,4 +68,18 @@ class ApiService {
       return [];
     }
   }
+
+  // --- FUNGSI BARU: MENGAMBIL DATA IHSG REAL-TIME ---
+  static Future<Map<String, dynamic>> fetchIHSG() async {
+    try {
+      var response = await http.get(Uri.parse('$baseUrl/ihsg/'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        return {"status": "gagal", "pesan": "Server error: ${response.statusCode}"};
+      }
+    } catch (e) {
+      return {"status": "gagal", "pesan": "Gagal terhubung ke backend: $e"};
+    }
+  }
 }
