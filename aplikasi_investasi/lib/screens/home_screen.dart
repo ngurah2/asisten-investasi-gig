@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart'; // Menambahkan intl untuk format tanggal PDF
 import '../services/api_service.dart';
+import '../services/pdf_service.dart';
 import 'goals_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,7 +18,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  XFile? _imageFile;
+  XFile? _imageFile; 
   final ImagePicker _picker = ImagePicker();
   
   final TextEditingController _deskripsiController = TextEditingController(); 
@@ -29,14 +31,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   Map<String, dynamic>? _hasilAnalisis;
   List<Map<String, dynamic>> _daftarManual = [];
-  Map<String, dynamic>? _targetTerdekat;
 
   final PageController _pageController = PageController(viewportFraction: 0.93, initialPage: 1000);
   int _currentCardIndex = 1000;
   Timer? _carouselTimer;
 
+  // Variabel penampung data IHSG Real-time
   String _ihsgNilai = "Memuat...";
   String _ihsgPerubahan = "Memuat data...";
+  Map<String, dynamic>? _targetTerdekat;
 
   int get _totalManual => _daftarManual.fold(0, (sum, item) => sum + (item['nominal'] as int));
 
@@ -495,6 +498,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text('Total Pengeluaran:', style: TextStyle(fontWeight: FontWeight.bold)),
                 Text('Rp ${_formatRupiah(_totalManual)}', style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold, fontSize: 16)),
               ]),
+              
+              // --- EKSPOR PDF ---
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  SharedPreferences prefs = await SharedPreferences.getInstance();
+                  String namaUser = prefs.getString('userName') ?? 'Pengguna GIM';
+                  
+                  // Mengubah data manual menjadi format yang diterima PdfService Dasbor baru
+                  List<Map<String, dynamic>> dataPdf = _daftarManual.map((item) {
+                    return {
+                      'tanggal': DateFormat('dd MMM yyyy').format(DateTime.now()),
+                      'deskripsi': item['deskripsi'],
+                      'nominal': item['nominal'],
+                      'rekomendasi': 'Catatan Manual: Item ini diinput secara manual dan belum dianalisis oleh AI.'
+                    };
+                  }).toList();
+
+                  await PdfService.cetakLaporan("Pengeluaran Manual GIM", dataPdf, namaUser);
+                },
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text('Ekspor Laporan PDF'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
+              ),
             ],
 
             const SizedBox(height: 32),
