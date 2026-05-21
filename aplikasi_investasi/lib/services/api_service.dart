@@ -105,19 +105,48 @@ class ApiService {
     }
   }
 
-  // --- FUNGSI BARU UNTUK RINGKASAN DI HOME SCREEN ---
+  static Future<Map<String, dynamic>> topUpTarget(int targetId, int nominal) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/target/topup/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'target_id': targetId, 'nominal': nominal}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'status': 'gagal', 'pesan': 'Gagal terhubung ke server'};
+    } catch (e) {
+      return {'status': 'gagal', 'pesan': 'Error: $e'};
+    }
+  }
+
   static Future<Map<String, dynamic>?> fetchTargetTerdekat(int userId) async {
     try {
       var response = await http.get(Uri.parse('$baseUrl/target/list/?user_id=$userId'));
       if (response.statusCode == 200) {
         var data = json.decode(response.body)['data'] as List;
         if (data.isNotEmpty) {
-          return data.first; // Mengambil target pertama untuk ditampilkan
+          return data.first; 
         }
       }
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  // FITUR BARU: Tarik Riwayat per Target
+  static Future<List<dynamic>> riwayatTarget(int targetId) async {
+    try {
+      var response = await http.get(Uri.parse('$baseUrl/target/history/?target_id=$targetId'));
+      if (response.statusCode == 200) {
+        var data = json.decode(response.body);
+        if (data['status'] == 'sukses') return data['data'];
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 }

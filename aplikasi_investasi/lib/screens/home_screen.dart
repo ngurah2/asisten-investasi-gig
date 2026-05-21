@@ -3,12 +3,31 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Tambahan untuk InputFormatter
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Menambahkan intl untuk format tanggal PDF
+import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../services/pdf_service.dart';
 import 'goals_screen.dart';
+
+// --- FITUR BARU: Formatter Titik Ribuan Otomatis ---
+class CurrencyFormat extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+    // Hapus karakter non-digit
+    int value = int.parse(newValue.text.replaceAll(RegExp(r'[^0-9]'), ''));
+    final formatter = NumberFormat('#,###', 'id_ID');
+    String newText = formatter.format(value);
+    return newValue.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentCardIndex = 1000;
   Timer? _carouselTimer;
 
-  // Variabel penampung data IHSG Real-time
   String _ihsgNilai = "Memuat...";
   String _ihsgPerubahan = "Memuat data...";
   Map<String, dynamic>? _targetTerdekat;
@@ -119,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _editPengeluaran(int index) {
     TextEditingController editDeskripsi = TextEditingController(text: _daftarManual[index]['deskripsi']);
-    TextEditingController editNominal = TextEditingController(text: _daftarManual[index]['nominal'].toString());
+    TextEditingController editNominal = TextEditingController(text: _formatRupiah(_daftarManual[index]['nominal']));
 
     showDialog(
       context: context,
@@ -132,7 +150,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               TextField(controller: editDeskripsi, decoration: InputDecoration(labelText: 'Deskripsi', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
               const SizedBox(height: 16),
-              TextField(controller: editNominal, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Nominal (Rp)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+              // Menambahkan Formatter juga di Dialog Edit
+              TextField(
+                controller: editNominal, 
+                keyboardType: TextInputType.number, 
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyFormat()],
+                decoration: InputDecoration(labelText: 'Nominal (Rp)', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))
+              ),
             ],
           ),
           actions: [
@@ -207,6 +231,133 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       setState(() { _isLoading = false; });
     }
+  }
+
+  void _tampilkanDialogAlokasi(int surplus) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int userId = prefs.getInt('userId') ?? 0;
+
+    if (userId == 0) return;
+
+    List<dynamic> daftarTarget = await ApiService.listTarget(userId);
+
+    if (daftarTarget.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Belum ada target finansial aktif. Buat target dulu di menu Profil!')),
+        );
+      }
+      return;
+    }
+
+    int saranAlokasi = (surplus * 0.2).toInt(); 
+    // Format nominal ke titik ribuan agar rapi di dialog
+    TextEditingController nominalController = TextEditingController(text: _formatRupiah(saranAlokasi));
+    
+    int selectedTargetId = _targetTerdekat != null ? _targetTerdekat!['id'] : daftarTarget.first['id'];
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool isSubmitting = false;
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: Colors.orange[800]),
+                  const SizedBox(width: 8),
+                  const Text('Alokasi Cerdas AI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Pilih target keuangan untuk menampung surplus Anda (AI menyarankan 20%):', style: TextStyle(fontSize: 14)),
+                  const SizedBox(height: 14),
+                  
+                  DropdownButtonFormField<int>(
+                    value: selectedTargetId,
+                    decoration: InputDecoration(
+                      labelText: 'Pilih Target Keuangan',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    items: daftarTarget.map((target) {
+                      return DropdownMenuItem<int>(
+                        value: target['id'],
+                        child: Text(target['nama_target'].toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setStateDialog(() {
+                          selectedTargetId = value;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  TextField(
+                    controller: nominalController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyFormat()],
+                    decoration: InputDecoration(
+                      labelText: 'Nominal Alokasi',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixText: 'Rp ', 
+                      prefixStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context), 
+                  child: const Text('Batal', style: TextStyle(color: Colors.grey))
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[800], 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                  ),
+                  onPressed: isSubmitting ? null : () async {
+                    setStateDialog(() => isSubmitting = true);
+                    int nominalInput = int.tryParse(nominalController.text.replaceAll('.', '')) ?? 0;
+                    
+                    var res = await ApiService.topUpTarget(selectedTargetId, nominalInput);
+                    
+                    if (res['status'] == 'sukses') {
+                      Navigator.pop(context);
+                      await _loadTargetTerdekat(); 
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Dana berhasil dialokasikan secara otomatis!'), backgroundColor: Colors.teal)
+                        );
+                      }
+                    } else {
+                      setStateDialog(() => isSubmitting = false);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(res['pesan'] ?? 'Gagal memproses alokasi'), backgroundColor: Colors.red)
+                        );
+                      }
+                    }
+                  },
+                  child: isSubmitting 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                    : const Text('Alokasikan Sekarang', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
   }
 
   Widget _tampilkanGambar() {
@@ -466,7 +617,14 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(flex: 3, child: TextField(controller: _deskripsiController, decoration: InputDecoration(hintText: 'Barang', filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
                 const SizedBox(width: 12),
-                Expanded(flex: 2, child: TextField(controller: _kebutuhanController, keyboardType: TextInputType.number, decoration: InputDecoration(hintText: 'Rp', filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)))),
+                
+                // MENGGUNAKAN FORMATTER DI SINI JUGA
+                Expanded(flex: 2, child: TextField(
+                  controller: _kebutuhanController, 
+                  keyboardType: TextInputType.number, 
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyFormat()], // FORMATTER TITIK RIBUAN
+                  decoration: InputDecoration(hintText: 'Rp', filled: true, fillColor: Colors.grey[50], border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))
+                )),
                 const SizedBox(width: 12),
                 InkWell(onTap: _tambahPengeluaran, child: CircleAvatar(backgroundColor: Colors.teal[600], radius: 26, child: const Icon(Icons.add, color: Colors.white))),
               ],
@@ -499,14 +657,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('Rp ${_formatRupiah(_totalManual)}', style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.bold, fontSize: 16)),
               ]),
               
-              // --- EKSPOR PDF ---
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () async {
                   SharedPreferences prefs = await SharedPreferences.getInstance();
                   String namaUser = prefs.getString('userName') ?? 'Pengguna GIM';
                   
-                  // Mengubah data manual menjadi format yang diterima PdfService Dasbor baru
                   List<Map<String, dynamic>> dataPdf = _daftarManual.map((item) {
                     return {
                       'tanggal': DateFormat('dd MMM yyyy').format(DateTime.now()),
@@ -594,7 +750,22 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(_hasilAnalisis!['rekomendasi_investasi'] ?? '', style: const TextStyle(height: 1.5)),
             ],
           ),
-        )
+        ),
+        
+        if (surplus > 0) ...[
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => _tampilkanDialogAlokasi(surplus),
+            icon: const Icon(Icons.rocket_launch),
+            label: const Text('Alokasikan Surplus ke Target', style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange[800],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            ),
+          )
+        ]
       ]),
     );
   }
