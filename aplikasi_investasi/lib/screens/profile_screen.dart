@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Untuk format tanggal kalender
+import 'package:intl/intl.dart'; 
 import 'login_screen.dart'; 
 import 'goals_screen.dart';
 import '../services/api_service.dart'; 
@@ -141,7 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                   const Divider(),
-                  // FITUR BARU: PILIH TANGGAL MANUAL (KALENDER)
                   ListTile(
                     leading: const Icon(Icons.edit_calendar, color: Colors.blue),
                     title: const Text('Pilih Kalender Manual', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
@@ -149,8 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.pop(context);
                       DateTimeRange? pickedRange = await showDateRangePicker(
                         context: context,
-                        firstDate: DateTime(2020), // Batas bawah tahun
-                        lastDate: DateTime(2030),  // Batas atas tahun
+                        firstDate: DateTime(2020), 
+                        lastDate: DateTime(2030),  
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(context).copyWith(
@@ -220,7 +219,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (tipeFilter == "semua") {
         lolosFilter = true;
       } else if (tipeFilter == "kustom" && range != null) {
-        // Logika kalender kustom: pastikan tanggal berada di dalam range yang dipilih
         if (tglTransaksi.isAfter(range.start.subtract(const Duration(days: 1))) && 
             tglTransaksi.isBefore(range.end.add(const Duration(days: 1)))) {
           lolosFilter = true;
@@ -252,7 +250,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           nominalSurplus = int.tryParse(item['surplus'].toString()) ?? 0;
         }
         
-        // MAPPING FIELD LENGKAP: Mengambil juga field tanggal dan rekomendasi
         hasilFilter.add({
           'tanggal': item['tanggal']?.toString() ?? '-',
           'deskripsi': item['rincian']?.toString() ?? 'Transaksi',
@@ -265,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (hasilFilter.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tidak ada data transaksi pada periode yang dipilih.'), backgroundColor: Colors.orange),
+          const SnackBar(content: Text('Tidak ada data transaksi pada periode yang dipilih.'), backgroundColor: Colors.orange),
         );
       }
       return;
@@ -277,7 +274,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     
-    // Kirim data ke Service PDF
     await PdfService.cetakLaporan(namaPeriode, hasilFilter, _namaPengguna);
   }
 
@@ -334,7 +330,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.track_changes, 
                     title: 'Target Finansial (Goals)', 
                     subtitle: 'Lacak tabungan impianmu', 
-                    isComingSoon: false,
                     onTap: () {
                       Navigator.push(
                         context, 
@@ -347,16 +342,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.picture_as_pdf, 
                     title: 'Ekspor Laporan PDF', 
                     subtitle: 'Unduh rekap riwayat keuangan & AI', 
-                    isComingSoon: false,
                     onTap: _tampilkanDialogFilterPdf, 
                   ),
-                  
-                  const SizedBox(height: 20),
-                  const Text('Pengaturan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 10),
-                  _buildMenuItem(icon: Icons.notifications_active, title: 'Notifikasi', subtitle: 'Atur pengingat harian', isComingSoon: true),
-                  _buildMenuItem(icon: Icons.security, title: 'Keamanan Akun', subtitle: 'Ubah password & privasi', isComingSoon: true),
-                  _buildMenuItem(icon: Icons.info_outline, title: 'Tentang Aplikasi', subtitle: 'GIM Versi 2.0 (Stable)', isComingSoon: true),
                   
                   const SizedBox(height: 30),
                   
@@ -388,7 +375,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon, 
     required String title, 
     required String subtitle, 
-    bool isComingSoon = false,
     VoidCallback? onTap
   }) {
     return Card(
@@ -403,14 +389,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-        trailing: isComingSoon 
-            ? const Icon(Icons.lock_clock, color: Colors.orange) 
-            : const Icon(Icons.chevron_right, color: Colors.teal),
-        onTap: onTap ?? () {
-          if (isComingSoon) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur ini akan hadir di GIM V3!')));
-          }
-        },
+        trailing: const Icon(Icons.chevron_right, color: Colors.teal),
+        onTap: onTap,
       ),
     );
   }

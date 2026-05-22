@@ -65,7 +65,7 @@ Ikuti langkah ini HANYA JIKA Anda baru pertama kali mengunduh proyek ini.
 1. Buka **VS Code**, buka Terminal Baru (Sangat disarankan menggunakan *Command Prompt / CMD*, bukan PowerShell).
 2. Langsung tembak masuk ke folder backend menggunakan *path* lengkap:
    ```cmd
-   cd C:\asisten-investasi-gig-2-asli\asisten-investasi-gig-2-asli\backend
+   c
    ```
 3. **WAJIB:** Hidupkan *Virtual Environment* (mesin Python) terlebih dahulu:
    
